@@ -43,10 +43,10 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
       ...form,
       apporteur_id: apporteurId,
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
-      lot_cible_id: form.lot_cible_id || undefined,
+      lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
     }
 
-    const result = await soumettreProspect(payload as never)
+    const result = await soumettreProspect(payload as Parameters<typeof soumettreProspect>[0])
     if (result.success) {
       toast({ title: 'Prospect soumis', description: 'Votre prospect a été soumis pour validation.' })
       router.push('/mes-prospects')
@@ -148,7 +148,7 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
               <Select value={form.lot_cible_id} onValueChange={v => set('lot_cible_id', v)}>
                 <SelectTrigger><SelectValue placeholder="Aucune préférence" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune préférence</SelectItem>
+                  <SelectItem value="none">Aucune préférence</SelectItem>
                   {lots.map(l => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.reference} — {LOT_TYPE_LABELS[l.type as keyof typeof LOT_TYPE_LABELS]} — {formatCurrency(l.prix_individuel)}
