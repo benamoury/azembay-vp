@@ -1,9 +1,9 @@
 'use server'
 
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function sendMessageToYouss(message: string, prospectId?: string) {
   const supabase = createClient()
@@ -91,14 +91,13 @@ ${contextProspect ? `## Contexte du prospect en cours\n${contextProspect}` : ''}
 Si tu n'as pas assez d'informations sur un prospect, demande des précisions spécifiques.`
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      systemInstruction: systemPrompt,
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const result = await model.generateContent(message)
+    const text = result.response.text()
     return { success: true, response: text }
   } catch (error) {
     console.error('Youss error:', error)
