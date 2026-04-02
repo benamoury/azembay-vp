@@ -23,9 +23,11 @@ export type DocumentCategorie =
 export type FormulaireType = 'avec_acompte' | 'sans_acompte'
 export type ProgrammeHotelier = 'standard' | 'investisseur' | 'flexible'
 export type FormulaireStatut = 'signe' | 'retracte' | 'expire' | 'converti'
-export type SejourStatut = 'demande' | 'confirme' | 'realise' | 'annule'
+export type SejourStatut = 'demande' | 'confirme' | 'realise' | 'no_show' | 'annule'
 export type VisiteStatut = 'demandee' | 'confirmee_manager' | 'confirmee_securite' | 'realisee' | 'annulee'
 export type VenteStatut = 'en_cours' | 'acte_signe' | 'annule'
+export type WeekendStatut = 'pre_liste' | 'ouvert' | 'validation' | 'confirme' | 'ferme'
+export type FactureStatut = 'emise' | 'payee' | 'avoir'
 
 export interface Profile {
   id: string
@@ -49,6 +51,8 @@ export interface Lot {
   programme_hotelier?: string
   loyer_fixe?: number
   forfait_amenagement?: number
+  adultes_max?: number
+  enfants_max?: number
   created_at: string
 }
 
@@ -71,6 +75,7 @@ export interface Prospect {
   statut: ProspectStatut
   lot_cible_id?: string
   notes?: string
+  temperature?: number
   validated_by?: string
   validated_at?: string
   created_at: string
@@ -142,12 +147,32 @@ export interface Formulaire {
   lot?: Lot
 }
 
+export interface Weekend {
+  id: string
+  date_vendredi: string
+  date_samedi: string
+  date_dimanche?: string
+  seuil_guests: number
+  nb_guests_confirmes: number
+  nb_sejours_confirmes: number
+  statut: WeekendStatut
+  actif: boolean
+  notes?: string
+  confirmed_at?: string
+  created_at: string
+}
+
 export interface Sejour {
   id: string
   prospect_id: string
   formulaire_id?: string
+  apporteur_id?: string
+  weekend_id?: string
   date_arrivee: string
   date_depart: string
+  date_souhaitee_1?: string
+  date_souhaitee_2?: string
+  date_souhaitee_3?: string
   nb_adultes: number
   nb_enfants: number
   lot_assigne_id?: string
@@ -155,9 +180,56 @@ export interface Sejour {
   gratuit: boolean
   montant_facturable?: number
   recouvre: boolean
+  noshow: boolean
+  noshow_declared_by?: string
+  noshow_declared_at?: string
+  facture_envoyee: boolean
+  recouvre_confirme_by?: string
+  recouvre_confirme_at?: string
+  lot_libere_at?: string
+  notes_manager?: string
   created_at: string
+  updated_at?: string
   prospect?: Prospect
   lot_assigne?: Lot
+  weekend?: Weekend
+}
+
+export interface ClientNote {
+  id: string
+  prospect_id: string
+  auteur_id: string
+  contenu: string
+  temperature?: number
+  created_at: string
+  auteur?: Profile
+}
+
+export interface Facture {
+  id: string
+  sejour_id: string
+  prospect_id: string
+  numero_facture?: string
+  montant_ht: number
+  tva_pct: number
+  montant_ttc: number
+  date_emission: string
+  statut: FactureStatut
+  pdf_path?: string
+  created_by?: string
+  created_at: string
+  sejour?: Sejour
+  prospect?: Prospect
+}
+
+export interface ListeAttente {
+  id: string
+  prospect_id: string
+  apporteur_id: string
+  lot_type: LotType
+  priorite: number
+  created_at: string
+  prospect?: Prospect
 }
 
 export interface JourDisponible {

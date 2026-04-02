@@ -2,17 +2,20 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { PROSPECT_STATUT_LABELS, formatDate } from '@/lib/utils'
-import type { Prospect, Voucher, LienSecurise } from '@/lib/types'
-import { Users, Ticket, Link2, AlertTriangle } from 'lucide-react'
+import { PROSPECT_STATUT_LABELS, SEJOUR_STATUT_COLORS, SEJOUR_STATUT_LABELS, formatDate } from '@/lib/utils'
+import type { Prospect, Voucher, LienSecurise, Sejour } from '@/lib/types'
+import { Users, Ticket, Link2, AlertTriangle, Hotel } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface ManagerDashboardProps {
   prospects: Prospect[]
   vouchers: Voucher[]
   liens: LienSecurise[]
+  sejours: Sejour[]
 }
 
-export function ManagerDashboard({ prospects, vouchers, liens }: ManagerDashboardProps) {
+export function ManagerDashboard({ prospects, vouchers, liens, sejours }: ManagerDashboardProps) {
   const today = new Date().toISOString().split('T')[0]
   const vouchersToday = vouchers.filter(v => v.date_visite === today && v.statut === 'emis')
   const vouchersActifs = vouchers.filter(v => v.statut === 'emis')
@@ -111,6 +114,36 @@ export function ManagerDashboard({ prospects, vouchers, liens }: ManagerDashboar
           </CardContent>
         </Card>
       </div>
+
+      {/* Séjours à traiter */}
+      {sejours.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[#1A3C6E] flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2"><Hotel className="w-4 h-4" /> Séjours récents</span>
+              <Link href="/sejours" className="text-xs text-[#C8973A] hover:underline">Voir tous →</Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {sejours.slice(0, 5).map(s => {
+                const p = s.prospect as { nom: string; prenom: string } | undefined
+                return (
+                  <div key={s.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{p?.prenom} {p?.nom}</p>
+                      <p className="text-xs text-gray-400">{s.date_arrivee} → {s.date_depart}</p>
+                    </div>
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full', SEJOUR_STATUT_COLORS[s.statut as keyof typeof SEJOUR_STATUT_COLORS])}>
+                      {SEJOUR_STATUT_LABELS[s.statut as keyof typeof SEJOUR_STATUT_LABELS]}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Alertes */}
       {alertes.length > 0 && (

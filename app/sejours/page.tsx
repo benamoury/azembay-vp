@@ -13,16 +13,24 @@ export default async function SejoursPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: sejours }, { data: lots }] = await Promise.all([
+  const [{ data: sejours }, { data: lots }, { data: weekends }, { data: factures }] = await Promise.all([
     admin.from('sejours')
-      .select('*, prospect:prospects(nom,prenom), lot_assigne:lots(reference,type)')
-      .order('date_arrivee', { ascending: true }),
-    admin.from('lots').select('id,reference,type').eq('statut', 'disponible').order('reference'),
+      .select('*, prospect:prospects(nom,prenom,email,telephone,apporteur_id), lot_assigne:lots(reference,type,adultes_max,enfants_max), weekend:weekends_actives(date_vendredi,date_samedi,statut)')
+      .order('created_at', { ascending: false }),
+    admin.from('lots').select('id,reference,type,statut,adultes_max,enfants_max').order('reference'),
+    admin.from('weekends_actives').select('*').in('statut', ['ouvert', 'validation', 'confirme']).gte('date_samedi', new Date().toISOString().split('T')[0]).order('date_vendredi'),
+    admin.from('factures').select('id,sejour_id,numero_facture,montant_ttc,statut').order('created_at', { ascending: false }),
   ])
 
   return (
     <AppLayout role={profile.role} nom={profile.nom} prenom={profile.prenom}>
-      <SejoursClient sejours={sejours || []} lots={lots || []} managerId={user.id} />
+      <SejoursClient
+        sejours={sejours || []}
+        lots={lots || []}
+        weekends={weekends || []}
+        factures={factures || []}
+        managerId={user.id}
+      />
     </AppLayout>
   )
 }

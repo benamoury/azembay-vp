@@ -13,14 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   formatCurrency, formatDate, formatDateTime,
   PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS, CRM_ETAPES, LOT_TYPE_LABELS,
-  VOUCHER_STATUT_LABELS, VOUCHER_STATUT_COLORS,
+  VOUCHER_STATUT_LABELS, VOUCHER_STATUT_COLORS, TEMPERATURE_LABELS, TEMPERATURE_COLORS,
 } from '@/lib/utils'
-import type { Prospect, Voucher, Formulaire, Sejour, Lot, UserRole, JourDisponible } from '@/lib/types'
+import type { Prospect, Voucher, Formulaire, Sejour, Lot, UserRole, JourDisponible, ClientNote, Weekend } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Ticket, FileText,
-  Hotel, CheckCircle, XCircle, ArrowRight,
+  Hotel, CheckCircle, XCircle, ArrowRight, MessageSquare, Flame, Send,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -28,6 +28,7 @@ import {
   creerVoucher, creerFormulaire, creerSejour,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
+import { ajouterNote } from '@/actions/notes'
 import { Star } from 'lucide-react'
 
 interface Props {
@@ -37,6 +38,8 @@ interface Props {
   sejours: Sejour[]
   lots: Lot[]
   jours: JourDisponible[]
+  notes: ClientNote[]
+  weekends: Weekend[]
   managerId: string
   managerNom: string
   role: UserRole
@@ -59,22 +62,43 @@ export function ProspectDetailClient({
   sejours: initialSejours,
   lots,
   jours,
+  notes: initialNotes,
+  weekends,
   managerId,
   role,
 }: Props) {
   const [prospect, setProspect] = useState(initialProspect)
   const [vouchers] = useState(initialVouchers)
+  const [notes, setNotes] = useState(initialNotes)
   const [loading, setLoading] = useState(false)
   const [showVisiteDialog, setShowVisiteDialog] = useState(false)
   const [showVoucherDialog, setShowVoucherDialog] = useState(false)
   const [showFormulaireDialog, setShowFormulaireDialog] = useState(false)
   const [showSejourDialog, setShowSejourDialog] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [noteTemp, setNoteTemp] = useState<number | undefined>(undefined)
   const [visiteData, setVisiteData] = useState({ jour_id: '', notes_apporteur: '' })
   const [voucherData, setVoucherData] = useState({ date_visite: '', heure_visite: '10:00' })
   const [formulaireData, setFormulaireData] = useState({ lot_id: '', type: 'avec_acompte', programme_hotelier: 'standard', date_signature: '', sejour_test_souhaite: false })
   const [sejourData, setSejourData] = useState({ date_arrivee: '', date_depart: '', nb_adultes: 2, nb_enfants: 0 })
   const { toast } = useToast()
   const router = useRouter()
+
+  async function handleAjouterNote(e: React.FormEvent) {
+    e.preventDefault()
+    if (!noteText.trim()) return
+    setLoading(true)
+    const result = await ajouterNote({ prospect_id: prospect.id, contenu: noteText, temperature: noteTemp })
+    if (result.success) {
+      setNoteText('')
+      setNoteTemp(undefined)
+      router.refresh()
+      toast({ title: 'Note ajoutée' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
 
   const stepCurrent = CRM_ETAPES.find(e => e.value === prospect.statut)
   const action = ETAPE_ACTIONS[prospect.statut]
@@ -194,12 +218,18 @@ export function ProspectDetailClient({
           </Button>
         </Link>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-[#1A3C6E]">{prospect.prenom} {prospect.nom}</h1>
             {isHighValue && <Badge variant="orange">≥ 5M MAD</Badge>}
             <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', PROSPECT_STATUT_COLORS[prospect.statut])}>
               {PROSPECT_STATUT_LABELS[prospect.statut]}
             </span>
+            {prospect.temperature && (
+              <span className={cn('flex items-center gap-1 text-xs font-medium', TEMPERATURE_COLORS[prospect.temperature])}>
+                <Flame className="w-3.5 h-3.5" />
+                {TEMPERATURE_LABELS[prospect.temperature]}
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-400 mt-0.5">Créé le {formatDate(prospect.created_at)}</p>
         </div>
@@ -333,6 +363,83 @@ export function ProspectDetailClient({
               </CardContent>
             </Card>
           )}
+          {/* Fiche Client Vivante — Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[#1A3C6E] flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Fiche client vivante
+                {notes.length > 0 && <span className="text-xs text-gray-400 font-normal">({notes.length} note{notes.length > 1 ? 's' : ''})</span>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Ajouter note */}
+              <form onSubmit={handleAjouterNote} className="space-y-3">
+                <Textarea
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  placeholder="Ajouter une observation, un retour, une information..."
+                  rows={3}
+                  className="text-sm"
+                />
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500 mr-1">Temp. :</span>
+                    {[1,2,3,4,5].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setNoteTemp(prev => prev === n ? undefined : n)}
+                        className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border transition-all',
+                          noteTemp === n ? 'bg-[#1A3C6E] text-white border-[#1A3C6E]' : 'border-gray-200 text-gray-400 hover:border-gray-400'
+                        )}
+                        title={TEMPERATURE_LABELS[n]}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <Button type="submit" size="sm" disabled={loading || !noteText.trim()} className="ml-auto">
+                    <Send className="w-3.5 h-3.5 mr-1" /> Ajouter
+                  </Button>
+                </div>
+              </form>
+
+              {/* Notes existantes */}
+              {notes.length > 0 && (
+                <div className="space-y-3 pt-2 border-t">
+                  {notes.map(note => {
+                    const auteur = note.auteur as { prenom: string; nom: string } | undefined
+                    return (
+                      <div key={note.id} className="flex gap-3">
+                        <div className="w-7 h-7 rounded-full bg-[#1A3C6E]/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-bold text-[#1A3C6E]">
+                            {auteur?.prenom?.[0]}{auteur?.nom?.[0]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2 mb-0.5">
+                            <span className="text-xs font-medium text-gray-700">{auteur?.prenom} {auteur?.nom}</span>
+                            <span className="text-[10px] text-gray-400">{formatDateTime(note.created_at)}</span>
+                            {note.temperature && (
+                              <span className={cn('text-[10px] font-medium flex items-center gap-0.5', TEMPERATURE_COLORS[note.temperature])}>
+                                <Flame className="w-2.5 h-2.5" />{TEMPERATURE_LABELS[note.temperature]}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 leading-relaxed">{note.contenu}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {notes.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-2">Aucune note pour ce prospect.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Actions */}

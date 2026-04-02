@@ -105,18 +105,61 @@ export function buildEmailVoucherEmis(data: {
 
 export function buildEmailSejourConfirme(data: {
   prospect: { nom: string; prenom: string }
-  sejour: { date_arrivee: string; date_depart: string; nb_adultes: number; nb_enfants: number }
+  sejour: { date_arrivee: string; date_depart: string; nb_adultes: number; nb_enfants: number; lot_reference?: string }
 }) {
   return {
-    subject: `Séjour test confirmé — ${data.prospect.prenom} ${data.prospect.nom}`,
+    subject: `Invitation Séjour Exclusif — The Owners' Club — ${data.prospect.prenom} ${data.prospect.nom}`,
     html: baseLayout(`
-      <h2 style="color:#1A3C6E;margin-top:0;">Séjour test confirmé</h2>
-      <div style="background:#fff;padding:20px;border-radius:8px;border-left:4px solid #C8973A;">
-        <p style="margin:0 0 8px;"><strong>Prospect :</strong> ${data.prospect.prenom} ${data.prospect.nom}</p>
+      <h2 style="color:#1A3C6E;margin-top:0;">Invitation Séjour Exclusif — The Owners' Club</h2>
+      <div style="background:#fff;padding:20px;border-radius:8px;border-left:4px solid #C8973A;margin-bottom:20px;">
+        <p style="margin:0 0 8px;"><strong>Invité(e) :</strong> ${data.prospect.prenom} ${data.prospect.nom}</p>
         <p style="margin:0 0 8px;"><strong>Arrivée :</strong> ${data.sejour.date_arrivee}</p>
         <p style="margin:0 0 8px;"><strong>Départ :</strong> ${data.sejour.date_depart}</p>
-        <p style="margin:0;"><strong>Participants :</strong> ${data.sejour.nb_adultes} adulte(s), ${data.sejour.nb_enfants} enfant(s)</p>
+        <p style="margin:0 0 8px;"><strong>Participants :</strong> ${data.sejour.nb_adultes} adulte(s)${data.sejour.nb_enfants > 0 ? `, ${data.sejour.nb_enfants} enfant(s)` : ''}</p>
+        ${data.sejour.lot_reference ? `<p style="margin:0;"><strong>Unité assignée :</strong> ${data.sejour.lot_reference}</p>` : ''}
       </div>
+      <p style="color:#666;font-size:13px;">Merci de vous munir d'une pièce d'identité à la réception afin de confirmer votre séjour.</p>
+    `),
+  }
+}
+
+export function buildEmailNoShow(data: {
+  prospect: { nom: string; prenom: string }
+  facture: { numero: string; montant_ttc: number; date_emission: string }
+}) {
+  return {
+    subject: `Facture no-show — ${data.prospect.prenom} ${data.prospect.nom}`,
+    html: baseLayout(`
+      <h2 style="color:#1A3C6E;margin-top:0;">Facture de séjour non honoré</h2>
+      <p>Cher(e) ${data.prospect.prenom} ${data.prospect.nom},</p>
+      <p>Suite à votre absence lors du séjour test prévu, nous vous adressons la facture correspondante.</p>
+      <div style="background:#fff;padding:20px;border-radius:8px;border-left:4px solid #C8973A;margin-bottom:20px;">
+        <p style="margin:0 0 8px;"><strong>N° Facture :</strong> ${data.facture.numero}</p>
+        <p style="margin:0 0 8px;"><strong>Date :</strong> ${data.facture.date_emission}</p>
+        <p style="margin:0;"><strong>Montant TTC :</strong> ${new Intl.NumberFormat('fr-MA').format(data.facture.montant_ttc)} MAD</p>
+      </div>
+      <p style="color:#666;font-size:13px;">La facture est jointe en pièce jointe. Si vous procédez à l'acquisition d'une unité Azembay, un avoir vous sera accordé.</p>
+    `),
+  }
+}
+
+export function buildEmailAlerte(data: {
+  prospect: { nom: string; prenom: string }
+  joursRestants: number
+  lot_reference: string
+}) {
+  const urgent = data.joursRestants <= 7
+  return {
+    subject: `${urgent ? '⚠️ URGENT — ' : ''}Alerte recouvrement — ${data.prospect.prenom} ${data.prospect.nom} — J${30 - data.joursRestants}+`,
+    html: baseLayout(`
+      <h2 style="color:#1A3C6E;margin-top:0;">${urgent ? '⚠️ ' : ''}Alerte recouvrement no-show</h2>
+      ${urgent ? '<div style="background:#FEF3C7;border:1px solid #F59E0B;padding:12px 16px;border-radius:6px;margin-bottom:16px;"><strong style="color:#92400E;">⚠️ URGENT — Le lot sera libéré automatiquement dans ${data.joursRestants} jour(s)</strong></div>' : ''}
+      <div style="background:#fff;padding:20px;border-radius:8px;border-left:4px solid #C8973A;">
+        <p style="margin:0 0 8px;"><strong>Prospect :</strong> ${data.prospect.prenom} ${data.prospect.nom}</p>
+        <p style="margin:0 0 8px;"><strong>Lot :</strong> ${data.lot_reference}</p>
+        <p style="margin:0;"><strong>Jours avant libération automatique :</strong> ${data.joursRestants}</p>
+      </div>
+      <a href="${APP_URL}/sejours" style="display:inline-block;margin-top:20px;background:#1A3C6E;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Gérer les séjours →</a>
     `),
   }
 }

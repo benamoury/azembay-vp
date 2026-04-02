@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import type { ProspectStatut, LotType, LotStatut, VoucherStatut } from './types'
+import type { ProspectStatut, LotType, LotStatut, VoucherStatut, SejourStatut, WeekendStatut } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -107,4 +107,58 @@ export const ROLE_LABELS: Record<string, string> = {
   manager: 'Manager',
   apporteur: 'Apporteur',
   securite: 'Sécurité',
+}
+
+export const SEJOUR_STATUT_LABELS: Record<SejourStatut, string> = {
+  demande: 'Demandé',
+  confirme: 'Confirmé',
+  realise: 'Réalisé',
+  no_show: 'No-show',
+  annule: 'Annulé',
+}
+
+export const SEJOUR_STATUT_COLORS: Record<SejourStatut, string> = {
+  demande: 'bg-yellow-100 text-yellow-700',
+  confirme: 'bg-green-100 text-green-700',
+  realise: 'bg-blue-100 text-blue-700',
+  no_show: 'bg-red-100 text-red-700',
+  annule: 'bg-gray-100 text-gray-500',
+}
+
+export const WEEKEND_STATUT_LABELS: Record<WeekendStatut, string> = {
+  pre_liste: 'Pré-listé',
+  ouvert: 'Ouvert',
+  validation: 'En validation',
+  confirme: 'Confirmé',
+  ferme: 'Fermé',
+}
+
+export const WEEKEND_STATUT_COLORS: Record<WeekendStatut, string> = {
+  pre_liste: 'bg-gray-100 text-gray-500',
+  ouvert: 'bg-green-100 text-green-700',
+  validation: 'bg-orange-100 text-orange-700',
+  confirme: 'bg-blue-100 text-blue-700',
+  ferme: 'bg-gray-100 text-gray-400',
+}
+
+export const TEMPERATURE_LABELS: Record<number, string> = {
+  1: 'Froid',
+  2: 'Tiède',
+  3: 'Neutre',
+  4: 'Chaud',
+  5: 'Brûlant',
+}
+
+export const TEMPERATURE_COLORS: Record<number, string> = {
+  1: 'text-blue-400',
+  2: 'text-blue-600',
+  3: 'text-gray-500',
+  4: 'text-orange-500',
+  5: 'text-red-500',
+}
+
+export const LOT_TYPE_PRIORITY: Record<string, number> = {
+  villa_e: 3,
+  appart_2ch: 2,
+  appart_1ch: 1,
 }
