@@ -119,7 +119,7 @@ export function ProspectDetailClient({
   async function handleFormulaire(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const result = await creerFormulaire({ prospect_id: prospect.id, ...formulaireData as never })
+    const result = await creerFormulaire({ prospect_id: prospect.id, ...formulaireData })
     if (result.success) {
       setShowFormulaireDialog(false)
       setProspect(p => ({ ...p, statut: 'formulaire_signe' }))
