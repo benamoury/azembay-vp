@@ -15,7 +15,7 @@ import {
   PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS, CRM_ETAPES, LOT_TYPE_LABELS,
   VOUCHER_STATUT_LABELS, VOUCHER_STATUT_COLORS,
 } from '@/lib/utils'
-import type { Prospect, Voucher, Formulaire, Sejour, Lot, UserRole } from '@/lib/types'
+import type { Prospect, Voucher, Formulaire, Sejour, Lot, UserRole, JourDisponible } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import {
@@ -27,6 +27,8 @@ import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
   creerVoucher, creerFormulaire, creerSejour,
 } from '@/actions/prospects'
+import { demanderVisite } from '@/actions/visites'
+import { Star } from 'lucide-react'
 
 interface Props {
   prospect: Prospect
@@ -34,18 +36,21 @@ interface Props {
   formulaires: Formulaire[]
   sejours: Sejour[]
   lots: Lot[]
+  jours: JourDisponible[]
   managerId: string
   managerNom: string
   role: UserRole
 }
 
 const ETAPE_ACTIONS: Partial<Record<string, { label: string; nextStatut: string }>> = {
-  valide: { label: 'Émettre un voucher', nextStatut: 'visite_programmee' },
+  valide: { label: 'Planifier une visite', nextStatut: 'visite_programmee' },
   visite_programmee: { label: 'Marquer visite réalisée', nextStatut: 'visite_realisee' },
   visite_realisee: { label: 'Envoyer lien post-visite', nextStatut: 'dossier_envoye' },
   dossier_envoye: { label: 'Enregistrer formulaire signé', nextStatut: 'formulaire_signe' },
   formulaire_signe: { label: 'Planifier séjour / acte notarié', nextStatut: 'sejour_confirme' },
 }
+
+const DAY_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 
 export function ProspectDetailClient({
   prospect: initialProspect,
@@ -53,15 +58,18 @@ export function ProspectDetailClient({
   formulaires: initialFormulaires,
   sejours: initialSejours,
   lots,
+  jours,
   managerId,
   role,
 }: Props) {
   const [prospect, setProspect] = useState(initialProspect)
   const [vouchers] = useState(initialVouchers)
   const [loading, setLoading] = useState(false)
+  const [showVisiteDialog, setShowVisiteDialog] = useState(false)
   const [showVoucherDialog, setShowVoucherDialog] = useState(false)
   const [showFormulaireDialog, setShowFormulaireDialog] = useState(false)
   const [showSejourDialog, setShowSejourDialog] = useState(false)
+  const [visiteData, setVisiteData] = useState({ jour_id: '', notes_apporteur: '' })
   const [voucherData, setVoucherData] = useState({ date_visite: '', heure_visite: '10:00' })
   const [formulaireData, setFormulaireData] = useState({ lot_id: '', type: 'avec_acompte', programme_hotelier: 'standard', date_signature: '', sejour_test_souhaite: false })
   const [sejourData, setSejourData] = useState({ date_arrivee: '', date_depart: '', nb_adultes: 2, nb_enfants: 0 })
@@ -91,6 +99,27 @@ export function ProspectDetailClient({
     if (result.success) {
       setProspect(p => ({ ...p, statut: 'non_concluant' }))
       toast({ title: 'Prospect marqué non concluant' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  async function handleVisite(e: React.FormEvent) {
+    e.preventDefault()
+    if (!visiteData.jour_id) return
+    setLoading(true)
+    const jour = jours.find(j => j.id === visiteData.jour_id)
+    const result = await demanderVisite({
+      prospect_id: prospect.id,
+      jour_id: visiteData.jour_id,
+      date_visite: jour!.date,
+      notes_apporteur: visiteData.notes_apporteur || undefined,
+    })
+    if (result.success) {
+      setShowVisiteDialog(false)
+      setProspect(p => ({ ...p, statut: 'visite_programmee' }))
+      toast({ title: 'Visite planifiée', description: `Date : ${jour?.date} — En attente de confirmation sécurité.` })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -312,10 +341,10 @@ export function ProspectDetailClient({
             <CardHeader><CardTitle className="text-[#1A3C6E] text-sm">Actions CRM</CardTitle></CardHeader>
             <CardContent className="space-y-3">
 
-              {/* Étape 2 → Voucher */}
+              {/* Étape 2 → Planifier visite */}
               {prospect.statut === 'valide' && (
-                <Button className="w-full" onClick={() => setShowVoucherDialog(true)}>
-                  <Ticket className="w-4 h-4 mr-2" /> Émettre un voucher
+                <Button className="w-full" onClick={() => setShowVisiteDialog(true)}>
+                  <CheckCircle className="w-4 h-4 mr-2" /> Planifier une visite
                 </Button>
               )}
 
@@ -380,6 +409,57 @@ export function ProspectDetailClient({
           )}
         </div>
       </div>
+
+      {/* Visite Dialog */}
+      <Dialog open={showVisiteDialog} onOpenChange={setShowVisiteDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Planifier une visite</DialogTitle></DialogHeader>
+          <form onSubmit={handleVisite} className="space-y-4">
+            <div>
+              <Label className="mb-2 block">Choisir une date disponible</Label>
+              <div className="grid grid-cols-4 gap-1.5 max-h-64 overflow-y-auto pr-1">
+                {jours.map(j => {
+                  const full = (j.nb_visites ?? 0) >= j.capacite
+                  const d = new Date(j.date + 'T00:00:00')
+                  const label = `${DAY_FR[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`
+                  return (
+                    <button
+                      key={j.id}
+                      type="button"
+                      disabled={full}
+                      onClick={() => setVisiteData(p => ({ ...p, jour_id: j.id }))}
+                      className={cn(
+                        'flex flex-col items-center px-2 py-2 rounded-lg text-xs border transition-all',
+                        full ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed opacity-60' :
+                        visiteData.jour_id === j.id ? 'bg-[#1A3C6E] border-[#1A3C6E] text-white' :
+                        j.prioritaire ? 'bg-[#C8973A]/10 border-[#C8973A]/50 text-[#8B6420] hover:bg-[#C8973A]/20' :
+                        'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      )}
+                    >
+                      {j.prioritaire && <Star className="w-2.5 h-2.5 mb-0.5" />}
+                      <span className="font-semibold">{label}</span>
+                      <span className="opacity-70">{j.nb_visites ?? 0}/{j.capacite}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <Label>Notes pour la sécurité (optionnel)</Label>
+              <Textarea
+                value={visiteData.notes_apporteur}
+                onChange={e => setVisiteData(p => ({ ...p, notes_apporteur: e.target.value }))}
+                placeholder="Informations particulières..."
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowVisiteDialog(false)}>Annuler</Button>
+              <Button type="submit" disabled={loading || !visiteData.jour_id}>Confirmer la date</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Voucher Dialog */}
       <Dialog open={showVoucherDialog} onOpenChange={setShowVoucherDialog}>

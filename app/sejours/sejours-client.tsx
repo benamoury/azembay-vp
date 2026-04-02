@@ -6,15 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDate, LOT_TYPE_LABELS } from '@/lib/utils'
-import type { Sejour, WeekendActif } from '@/lib/types'
+import type { Sejour } from '@/lib/types'
 import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
-import { Hotel, Star, CheckCircle } from 'lucide-react'
-import { confirmerSejour, toggleWeekend } from '@/actions/sejours'
+import { Hotel, CheckCircle } from 'lucide-react'
+import { confirmerSejour } from '@/actions/sejours'
 
 interface SejoursClientProps {
   sejours: Sejour[]
-  weekends: WeekendActif[]
   lots: { id: string; reference: string; type: string }[]
   managerId: string
 }
@@ -33,9 +32,8 @@ const STATUT_LABELS: Record<string, string> = {
   annule: 'Annulé',
 }
 
-export function SejoursClient({ sejours: initSejours, weekends: initWeekends, lots }: SejoursClientProps) {
+export function SejoursClient({ sejours: initSejours, lots }: SejoursClientProps) {
   const [sejours, setSejours] = useState(initSejours)
-  const [weekends, setWeekends] = useState(initWeekends)
   const { toast } = useToast()
 
   async function handleConfirmer(sejourId: string, lotId: string) {
@@ -45,14 +43,6 @@ export function SejoursClient({ sejours: initSejours, weekends: initWeekends, lo
       toast({ title: 'Séjour confirmé' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
-    }
-  }
-
-  async function handleToggleWeekend(id: string, current: boolean) {
-    const result = await toggleWeekend(id, !current)
-    if (result.success) {
-      setWeekends(prev => prev.map(w => w.id === id ? { ...w, actif: !current } : w))
-      toast({ title: `Week-end ${!current ? 'activé' : 'désactivé'}` })
     }
   }
 
@@ -149,40 +139,6 @@ export function SejoursClient({ sejours: initSejours, weekends: initWeekends, lo
         </Card>
       </div>
 
-      {/* Calendrier weekends */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-[#1A3C6E] flex items-center gap-2">
-            <Hotel className="w-4 h-4" /> Gestion des week-ends
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {weekends.map(w => (
-              <div key={w.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div className="flex items-center gap-3">
-                  {w.notes?.includes('PRIORITAIRE') && (
-                    <Star className="w-4 h-4 text-[#C8973A] fill-[#C8973A] flex-shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">
-                      {formatDate(w.date_vendredi)} — {formatDate(w.date_samedi)}
-                      {w.notes && <span className="ml-2 text-xs text-[#C8973A]">{w.notes}</span>}
-                    </p>
-                    <p className="text-xs text-gray-400">{w.nb_guests_confirmes}/{w.seuil_guests} guests</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={w.actif ? 'green' : 'gray'}>{w.actif ? 'Actif' : 'Inactif'}</Badge>
-                  <Button size="sm" variant="outline" onClick={() => handleToggleWeekend(w.id, w.actif)}>
-                    {w.actif ? 'Désactiver' : 'Activer'}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

@@ -24,6 +24,7 @@ export type FormulaireType = 'avec_acompte' | 'sans_acompte'
 export type ProgrammeHotelier = 'standard' | 'investisseur' | 'flexible'
 export type FormulaireStatut = 'signe' | 'retracte' | 'expire' | 'converti'
 export type SejourStatut = 'demande' | 'confirme' | 'realise' | 'annule'
+export type VisiteStatut = 'demandee' | 'confirmee_manager' | 'confirmee_securite' | 'realisee' | 'annulee'
 export type VenteStatut = 'en_cours' | 'acte_signe' | 'annule'
 
 export interface Profile {
@@ -159,15 +160,33 @@ export interface Sejour {
   lot_assigne?: Lot
 }
 
-export interface WeekendActif {
+export interface JourDisponible {
   id: string
-  date_vendredi: string
-  date_samedi: string
-  seuil_guests: number
-  nb_guests_confirmes: number
+  date: string
+  capacite: number
   actif: boolean
+  prioritaire: boolean
   notes?: string
+  nb_visites?: number
   created_at: string
+}
+
+export interface Visite {
+  id: string
+  prospect_id: string
+  jour_id: string
+  date_visite: string
+  statut: VisiteStatut
+  notes_apporteur?: string
+  notes_securite?: string
+  confirmed_by?: string
+  confirmed_securite_by?: string
+  confirmed_manager_at?: string
+  confirmed_securite_at?: string
+  created_at: string
+  updated_at: string
+  prospect?: Prospect
+  jour?: JourDisponible
 }
 
 export interface Vente {

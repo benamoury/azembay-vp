@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Documents', href: '/documents', icon: FileText, roles: ['direction', 'manager'] },
   { label: 'Liens sécurisés', href: '/liens', icon: Link2, roles: ['direction', 'manager'] },
   { label: 'Séjours', href: '/sejours', icon: Hotel, roles: ['direction', 'manager'] },
+  { label: 'Visites', href: '/visites', icon: Calendar, roles: ['direction', 'manager'] },
   // Apporteur
   { label: 'Mes prospects', href: '/mes-prospects', icon: Users, roles: ['apporteur'] },
   { label: 'Soumettre un prospect', href: '/soumettre', icon: PlusCircle, roles: ['apporteur'] },

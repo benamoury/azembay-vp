@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { AppLayout } from '@/components/layout/app-layout'
-import { SejoursClient } from './sejours-client'
+import { VisitesClient } from './visites-client'
 
-export default async function SejoursPage() {
+export default async function VisitesPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -13,16 +13,15 @@ export default async function SejoursPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: sejours }, { data: lots }] = await Promise.all([
-    admin.from('sejours')
-      .select('*, prospect:prospects(nom,prenom), lot_assigne:lots(reference,type)')
-      .order('date_arrivee', { ascending: true }),
-    admin.from('lots').select('id,reference,type').eq('statut', 'disponible').order('reference'),
-  ])
+  const { data: visites } = await admin
+    .from('visites')
+    .select('*, prospect:prospects(nom,prenom,email,telephone,budget_estime,apporteur_id), jour:jours_disponibles(date,prioritaire)')
+    .neq('statut', 'annulee')
+    .order('date_visite', { ascending: true })
 
   return (
     <AppLayout role={profile.role} nom={profile.nom} prenom={profile.prenom}>
-      <SejoursClient sejours={sejours || []} lots={lots || []} managerId={user.id} />
+      <VisitesClient visites={visites || []} userId={user.id} />
     </AppLayout>
   )
 }

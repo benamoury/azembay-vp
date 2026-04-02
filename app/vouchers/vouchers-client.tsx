@@ -6,18 +6,29 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/utils'
-import type { Voucher, WeekendActif } from '@/lib/types'
+import type { Voucher, JourDisponible } from '@/lib/types'
 import { cn, VOUCHER_STATUT_COLORS, VOUCHER_STATUT_LABELS } from '@/lib/utils'
 import { Ticket, Star, Calendar } from 'lucide-react'
 
 interface VouchersClientProps {
   vouchers: Voucher[]
-  weekends: WeekendActif[]
+  jours: JourDisponible[]
 }
 
-const MONTHS = ['Avril 2026', 'Mai 2026', 'Juin 2026']
+const MONTHS = [
+  { label: 'Avril 2026', month: 3 },
+  { label: 'Mai 2026', month: 4 },
+  { label: 'Juin 2026', month: 5 },
+]
 
-export function VouchersClient({ vouchers, weekends }: VouchersClientProps) {
+const DAY_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+
+function formatDayShort(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${DAY_FR[d.getDay()]} ${d.getDate()}`
+}
+
+export function VouchersClient({ vouchers, jours }: VouchersClientProps) {
   const [search, setSearch] = useState('')
   const today = new Date().toISOString().split('T')[0]
 
@@ -34,8 +45,8 @@ export function VouchersClient({ vouchers, weekends }: VouchersClientProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A3C6E]">Vouchers</h1>
-          <p className="text-sm text-gray-500 mt-1">{vouchers.length} voucher(s) total · {vouchersActifs.length} actifs</p>
+          <h1 className="text-2xl font-bold text-[#1A3C6E]">Vouchers & Calendrier</h1>
+          <p className="text-sm text-gray-500 mt-1">{vouchers.length} voucher(s) · {vouchersActifs.length} actifs</p>
         </div>
       </div>
 
@@ -64,48 +75,56 @@ export function VouchersClient({ vouchers, weekends }: VouchersClientProps) {
         <CardHeader>
           <CardTitle className="text-[#1A3C6E] flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#C8973A]" />
-            Calendrier Golden Hour
+            Calendrier des visites — Golden Hour 2026
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            {MONTHS.map((month, mi) => {
-              const monthWeekends = weekends.filter(w => {
-                const d = new Date(w.date_vendredi)
-                return d.getMonth() === 3 + mi // avril=3, mai=4, juin=5
-              })
+          <div className="grid grid-cols-3 gap-6">
+            {MONTHS.map(({ label, month }) => {
+              const monthJours = jours.filter(j => new Date(j.date + 'T00:00:00').getMonth() === month)
               return (
-                <div key={month}>
-                  <h3 className="text-sm font-semibold text-[#1A3C6E] mb-2">{month}</h3>
-                  <div className="space-y-1">
-                    {monthWeekends.map(w => (
-                      <div
-                        key={w.id}
-                        className={cn(
-                          'flex items-center justify-between px-3 py-2 rounded-lg text-xs border',
-                          w.notes?.includes('PRIORITAIRE')
-                            ? 'bg-[#C8973A]/10 border-[#C8973A]/40 text-[#8B6420]'
-                            : 'bg-gray-50 border-gray-200 text-gray-600'
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {w.notes?.includes('PRIORITAIRE') && (
-                            <Star className="w-3 h-3 text-[#C8973A] fill-[#C8973A]" />
+                <div key={label}>
+                  <h3 className="text-sm font-bold text-[#1A3C6E] mb-3 pb-1 border-b">{label}</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {monthJours.map(j => {
+                      const full = (j.nb_visites ?? 0) >= j.capacite
+                      const isPast = j.date < today
+                      return (
+                        <div
+                          key={j.id}
+                          title={`${(j.nb_visites ?? 0)}/${j.capacite} visite(s)${j.prioritaire ? ' — Date prioritaire' : ''}`}
+                          className={cn(
+                            'flex flex-col items-center px-2 py-1.5 rounded-lg text-xs border min-w-[44px] cursor-default',
+                            isPast
+                              ? 'bg-gray-50 border-gray-200 text-gray-400 opacity-60'
+                              : full
+                              ? 'bg-red-50 border-red-200 text-red-600'
+                              : j.prioritaire
+                              ? 'bg-[#C8973A]/10 border-[#C8973A]/50 text-[#8B6420]'
+                              : 'bg-green-50 border-green-200 text-green-700'
                           )}
-                          <span>{formatDate(w.date_vendredi)} – {formatDate(w.date_samedi)}</span>
+                        >
+                          {j.prioritaire && !isPast && (
+                            <Star className="w-2.5 h-2.5 text-[#C8973A] fill-[#C8973A] mb-0.5" />
+                          )}
+                          <span className="font-semibold">{formatDayShort(j.date)}</span>
+                          <span className="text-[10px] mt-0.5 opacity-80">
+                            {j.nb_visites ?? 0}/{j.capacite}
+                          </span>
                         </div>
-                        <span className="font-medium">{w.nb_guests_confirmes}/{w.seuil_guests}</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-3 flex items-center gap-1">
-            <Star className="w-3 h-3 text-[#C8973A] fill-[#C8973A]" />
-            Dates prioritaires (badge or) : 17-18 avril, 29-30 avril, 15-16 mai, 28-29 mai, 10-11 juin
-          </p>
+          <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border border-green-200 inline-block" /> Disponible</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#C8973A]/20 border border-[#C8973A]/50 inline-block" /> Prioritaire</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200 inline-block" /> Complet (2/2)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" /> Passé</span>
+          </div>
         </CardContent>
       </Card>
 
