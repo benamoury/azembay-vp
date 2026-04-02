@@ -162,7 +162,7 @@ export async function creerVoucher(data: {
   const { data: voucher, error } = await admin
     .from('vouchers')
     .insert(data)
-    .select('*, prospect:prospects(nom,prenom), apporteur:profiles!apporteur_id(nom,prenom,email)')
+    .select('*, prospect:prospects(nom,prenom,email), apporteur:profiles!apporteur_id(nom,prenom,email,telephone)')
     .single()
 
   if (error) return { success: false, error: error.message }
@@ -170,24 +170,30 @@ export async function creerVoucher(data: {
   // Advance prospect to visite_programmee
   await admin.from('prospects').update({ statut: 'visite_programmee' }).eq('id', data.prospect_id)
 
-  // Update weekends nb_guests_confirmes
-  await admin.rpc('increment_guests', { visite_date: data.date_visite }).maybeSingle()
+  // Send email to client + apporteur + sécurité (copie)
+  const ap = voucher.apporteur as { email: string; nom: string; prenom: string; telephone?: string }
+  const prospect = voucher.prospect as { nom: string; prenom: string; email?: string }
 
-  // Send email to apporteur with voucher info
-  const ap = voucher.apporteur as { email: string; nom: string; prenom: string }
-  const prospect = voucher.prospect as { nom: string; prenom: string }
+  const emailData = buildEmailVoucherEmis({
+    prospect: { nom: prospect.nom, prenom: prospect.prenom },
+    voucher: {
+      numero_voucher: voucher.numero_voucher,
+      date_visite: data.date_visite,
+      heure_visite: data.heure_visite,
+    },
+    apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
+  })
 
-  if (ap?.email) {
-    const emailData = buildEmailVoucherEmis({
-      prospect,
-      voucher: {
-        numero_voucher: voucher.numero_voucher,
-        date_visite: data.date_visite,
-        heure_visite: data.heure_visite,
-      },
-      apporteur: ap,
-    })
-    await sendEmail({ to: ap.email, ...emailData })
+  const recipients: string[] = []
+  if (prospect.email) recipients.push(prospect.email)
+  if (ap?.email && ap.email !== prospect.email) recipients.push(ap.email)
+
+  // Add security as copy
+  const { data: securite } = await admin.from('profiles').select('email').eq('role', 'securite')
+  for (const s of securite ?? []) recipients.push(s.email)
+
+  if (recipients.length > 0) {
+    await sendEmail({ to: recipients, ...emailData })
   }
 
   return { success: true, voucher }
@@ -203,9 +209,19 @@ export async function creerFormulaire(data: {
 }) {
   const admin = createAdminClient()
 
-  // Calculate retractation expiry (10 days after signature)
+  // Calculate retractation expiry: 7 working days (Mon-Fri only) after signature
+  function addWorkingDays(from: string, days: number): string {
+    const d = new Date(from + 'T00:00:00')
+    let added = 0
+    while (added < days) {
+      d.setDate(d.getDate() + 1)
+      const dow = d.getDay()
+      if (dow !== 0 && dow !== 6) added++ // skip Saturday (6) and Sunday (0)
+    }
+    return d.toISOString().split('T')[0]
+  }
   const dateRetractation = data.date_signature
-    ? new Date(new Date(data.date_signature).getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    ? addWorkingDays(data.date_signature, 7)
     : undefined
 
   const { data: formulaire, error } = await admin

@@ -4,27 +4,25 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { Voucher, Visite } from '@/lib/types'
+import type { Voucher } from '@/lib/types'
 import { useToast } from '@/components/ui/use-toast'
 import { cn, VOUCHER_STATUT_COLORS } from '@/lib/utils'
-import { Shield, Search, CheckCircle, QrCode, Phone, ClipboardCheck } from 'lucide-react'
+import { Shield, Search, CheckCircle, QrCode, Phone } from 'lucide-react'
 import { marquerVoucherUtilise } from '@/actions/vouchers'
-import { confirmerVisiteSecurite } from '@/actions/visites'
 
 interface GuestListClientProps {
   vouchers: Voucher[]
-  visites: (Visite & { prospect: { nom: string; prenom: string; telephone?: string } })[]
   today: string
 }
 
-export function GuestListClient({ vouchers: initialVouchers, visites: initialVisites, today }: GuestListClientProps) {
+export function GuestListClient({ vouchers: initialVouchers, today }: GuestListClientProps) {
   const [vouchers, setVouchers] = useState(initialVouchers)
-  const [visites, setVisites] = useState(initialVisites)
   const [search, setSearch] = useState('')
   const [qrInput, setQrInput] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const { toast } = useToast()
 
+  // Security role: scan QR only. No validation power over visits.
   const filtered = vouchers.filter(v => {
     if (!search) return true
     const p = v.prospect as { nom: string; prenom: string } | undefined
@@ -33,7 +31,6 @@ export function GuestListClient({ vouchers: initialVouchers, visites: initialVis
 
   const emis = vouchers.filter(v => v.statut === 'emis').length
   const utilise = vouchers.filter(v => v.statut === 'utilise').length
-  const pendingSecurite = visites.filter(v => v.statut === 'confirmee_manager')
 
   async function handleCheck(voucherId: string) {
     setLoading(voucherId)
@@ -62,18 +59,6 @@ export function GuestListClient({ vouchers: initialVouchers, visites: initialVis
     setQrInput('')
   }
 
-  async function handleConfirmSecurite(visiteId: string) {
-    setLoading(visiteId)
-    const result = await confirmerVisiteSecurite(visiteId)
-    if (result.success) {
-      setVisites(prev => prev.map(v => v.id === visiteId ? { ...v, statut: 'confirmee_securite' } : v))
-      toast({ title: '✓ Visite confirmée', description: 'La mise en place sécurité est validée.' })
-    } else {
-      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
-    }
-    setLoading(null)
-  }
-
   const todayFormatted = new Date(today).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
@@ -87,7 +72,7 @@ export function GuestListClient({ vouchers: initialVouchers, visites: initialVis
             <p className="text-white/60 text-sm capitalize">{todayFormatted}</p>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/10 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold">{vouchers.length}</p>
             <p className="text-white/60 text-xs mt-1">Visites prévues</p>
@@ -100,46 +85,8 @@ export function GuestListClient({ vouchers: initialVouchers, visites: initialVis
             <p className="text-2xl font-bold text-green-400">{utilise}</p>
             <p className="text-white/60 text-xs mt-1">Entrées validées</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-yellow-300">{pendingSecurite.length}</p>
-            <p className="text-white/60 text-xs mt-1">À confirmer</p>
-          </div>
         </div>
       </div>
-
-      {/* Visites en attente de confirmation sécurité */}
-      {pendingSecurite.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-800 flex items-center gap-2 text-sm">
-              <ClipboardCheck className="w-4 h-4" />
-              Visites à confirmer — Mise en place sécurité
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {pendingSecurite.map(v => (
-              <div key={v.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-yellow-200">
-                <div>
-                  <p className="font-semibold text-[#1A3C6E]">{v.prospect?.prenom} {v.prospect?.nom}</p>
-                  <p className="text-xs text-gray-500">
-                    Visite prévue le {new Date(v.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </p>
-                  {v.notes_apporteur && <p className="text-xs text-gray-400 mt-0.5">Note : {v.notes_apporteur}</p>}
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                  disabled={loading === v.id || v.statut === 'confirmee_securite'}
-                  onClick={() => handleConfirmSecurite(v.id)}
-                >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  Confirmer la mise en place
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       {/* QR Scanner */}
       <Card className="border-[#C8973A]/30">

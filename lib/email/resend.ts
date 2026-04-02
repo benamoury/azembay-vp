@@ -85,20 +85,20 @@ export function buildEmailProspectValide(prospect: { nom: string; prenom: string
 export function buildEmailVoucherEmis(data: {
   prospect: { nom: string; prenom: string }
   voucher: { numero_voucher?: string; date_visite: string; heure_visite: string }
-  apporteur: { nom: string; prenom: string }
+  apporteur: { nom: string; prenom: string; telephone?: string }
 }) {
   return {
-    subject: `Voucher émis — ${data.prospect.prenom} ${data.prospect.nom} — ${data.voucher.date_visite}`,
+    subject: `Invitation Visite Exclusive — Golden Hour 2026 — ${data.prospect.prenom} ${data.prospect.nom}`,
     html: baseLayout(`
-      <h2 style="color:#1A3C6E;margin-top:0;">Voucher de visite émis</h2>
+      <h2 style="color:#1A3C6E;margin-top:0;">Invitation Visite Exclusive — Golden Hour 2026</h2>
       <div style="background:#fff;padding:20px;border-radius:8px;border-left:4px solid #C8973A;margin-bottom:20px;">
-        <p style="margin:0 0 8px;"><strong>Numéro :</strong> ${data.voucher.numero_voucher ?? 'En cours'}</p>
-        <p style="margin:0 0 8px;"><strong>Prospect :</strong> ${data.prospect.prenom} ${data.prospect.nom}</p>
+        <p style="margin:0 0 8px;"><strong>Invité(e) :</strong> ${data.prospect.prenom} ${data.prospect.nom}</p>
         <p style="margin:0 0 8px;"><strong>Date :</strong> ${data.voucher.date_visite}</p>
-        <p style="margin:0 0 8px;"><strong>Heure :</strong> ${data.voucher.heure_visite}</p>
-        <p style="margin:0;"><strong>Apporteur :</strong> ${data.apporteur.prenom} ${data.apporteur.nom}</p>
+        <p style="margin:0 0 8px;"><strong>Lieu :</strong> Azembay — Sidi Bou Naim, Maroc</p>
+        <p style="margin:0 0 8px;"><strong>Votre point de contact chez Azembay :</strong> ${data.apporteur.prenom} ${data.apporteur.nom}${data.apporteur.telephone ? ` — ${data.apporteur.telephone}` : ''}</p>
+        ${data.voucher.numero_voucher ? `<p style="margin:0;color:#6b7280;font-size:12px;">Réf. ${data.voucher.numero_voucher}</p>` : ''}
       </div>
-      <p style="color:#666;font-size:13px;">Le voucher PDF nominatif est joint à cet email. Présentez-le à l'entrée du site.</p>
+      <p style="color:#666;font-size:13px;">Merci de vous munir d'une pièce d'identité à la réception afin de confirmer votre visite.<br/>Document personnel et non cessible.</p>
     `),
   }
 }

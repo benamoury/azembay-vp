@@ -12,8 +12,8 @@ import { confirmerVisiteManager, annulerVisite } from '@/actions/visites'
 
 const STATUT_LABELS: Record<string, string> = {
   demandee: 'Demandée',
-  confirmee_manager: 'Confirmée — En attente sécurité',
-  confirmee_securite: 'Confirmée sécurité',
+  confirmee_manager: 'Confirmée',
+  confirmee_securite: 'Réalisée',
   realisee: 'Réalisée',
   annulee: 'Annulée',
 }

@@ -14,24 +14,16 @@ export default async function GuestListPage() {
   const today = new Date().toISOString().split('T')[0]
   const admin = createAdminClient()
 
-  const [{ data: vouchers }, { data: visites }] = await Promise.all([
-    admin
-      .from('vouchers')
-      .select('*, prospect:prospects(nom,prenom,email,telephone)')
-      .eq('date_visite', today)
-      .order('heure_visite'),
-    admin
-      .from('visites')
-      .select('*, prospect:prospects(nom,prenom,telephone)')
-      .eq('statut', 'confirmee_manager')
-      .order('date_visite'),
-  ])
+  const { data: vouchers } = await admin
+    .from('vouchers')
+    .select('*, prospect:prospects(nom,prenom,email,telephone)')
+    .eq('date_visite', today)
+    .order('heure_visite')
 
   return (
     <AppLayout role={profile.role} nom={profile.nom} prenom={profile.prenom}>
       <GuestListClient
         vouchers={vouchers || []}
-        visites={(visites || []) as Parameters<typeof GuestListClient>[0]['visites']}
         today={today}
       />
     </AppLayout>
