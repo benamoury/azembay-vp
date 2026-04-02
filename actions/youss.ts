@@ -1,9 +1,9 @@
 'use server'
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 export async function sendMessageToYouss(message: string, prospectId?: string) {
   const supabase = createClient()
@@ -91,13 +91,16 @@ ${contextProspect ? `## Contexte du prospect en cours\n${contextProspect}` : ''}
 Si tu n'as pas assez d'informations sur un prospect, demande des précisions spécifiques.`
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: systemPrompt,
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      max_tokens: 1024,
     })
 
-    const result = await model.generateContent(message)
-    const text = result.response.text()
+    const text = completion.choices[0]?.message?.content || ''
     return { success: true, response: text }
   } catch (error) {
     console.error('Youss error:', error)
