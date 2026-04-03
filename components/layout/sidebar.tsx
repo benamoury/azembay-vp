@@ -7,7 +7,7 @@ import type { UserRole } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, FileText, Link2, Calendar,
-  Settings, CheckSquare, BarChart3, Shield, Ticket, Hotel, LogOut, PlusCircle, Bot,
+  Settings, CheckSquare, BarChart3, Shield, Ticket, Hotel, LogOut, PlusCircle,
 } from 'lucide-react'
 
 interface NavItem {
@@ -34,8 +34,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Mes prospects', href: '/mes-prospects', icon: Users, roles: ['apporteur'] },
   { label: 'Soumettre un prospect', href: '/soumettre', icon: PlusCircle, roles: ['apporteur'] },
   // { label: 'Calendrier visites', href: '/calendrier', icon: Calendar, roles: ['apporteur'] }, // SUSPENDED V1
-  // Youss
-  { label: 'Youss', href: '/youss', icon: Bot, roles: ['direction', 'manager', 'apporteur'] },
   // Securite
   { label: 'Guest List du jour', href: '/guest-list', icon: Shield, roles: ['securite'] },
 ]
