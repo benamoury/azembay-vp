@@ -25,7 +25,7 @@ import {
 import Link from 'next/link'
 import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
-  creerVoucher, creerFormulaire, creerSejour,
+  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
@@ -190,6 +190,30 @@ export function ProspectDetailClient({
     if (result.success) {
       setShowSejourDialog(false)
       toast({ title: 'Séjour demandé' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  async function handleValider() {
+    setLoading(true)
+    const result = await validerProspect(prospect.id)
+    if (result.success) {
+      setProspect(p => ({ ...p, statut: 'valide' }))
+      toast({ title: '✓ Prospect validé', description: 'L\'apporteur a été notifié.' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  async function handleRejeter() {
+    setLoading(true)
+    const result = await rejeterProspect(prospect.id)
+    if (result.success) {
+      setProspect(p => ({ ...p, statut: 'non_concluant' }))
+      toast({ title: 'Prospect rejeté' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -448,6 +472,18 @@ export function ProspectDetailClient({
             <CardHeader><CardTitle className="text-[#1A3C6E] text-sm">Actions CRM</CardTitle></CardHeader>
             <CardContent className="space-y-3">
 
+              {/* Étape 1 → Valider prospect soumis */}
+              {prospect.statut === 'soumis' && (
+                <div className="space-y-2">
+                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleValider} disabled={loading}>
+                    <CheckCircle className="w-4 h-4 mr-2" /> Valider le prospect
+                  </Button>
+                  <Button variant="outline" className="w-full text-red-600 border-red-200" onClick={handleRejeter} disabled={loading}>
+                    <XCircle className="w-4 h-4 mr-2" /> Rejeter
+                  </Button>
+                </div>
+              )}
+
               {/* Étape 2 → Planifier visite */}
               {prospect.statut === 'valide' && (
                 <Button className="w-full" onClick={() => setShowVisiteDialog(true)}>
@@ -455,11 +491,16 @@ export function ProspectDetailClient({
                 </Button>
               )}
 
-              {/* Étape 3 → Marquer visite réalisée */}
+              {/* Étape 3 → Voucher + Marquer visite réalisée */}
               {prospect.statut === 'visite_programmee' && (
-                <Button className="w-full" onClick={handleAvancer} disabled={loading}>
-                  <CheckCircle className="w-4 h-4 mr-2" /> Visite réalisée
-                </Button>
+                <div className="space-y-2">
+                  <Button className="w-full bg-[#C8973A] hover:bg-[#b07e2e]" onClick={() => setShowVoucherDialog(true)} disabled={loading}>
+                    <Ticket className="w-4 h-4 mr-2" /> Émettre le voucher visite
+                  </Button>
+                  <Button className="w-full" onClick={handleAvancer} disabled={loading}>
+                    <CheckCircle className="w-4 h-4 mr-2" /> Marquer visite réalisée
+                  </Button>
+                </div>
               )}
 
               {/* Étape 4 → Lien sécurisé post-visite */}
@@ -483,12 +524,6 @@ export function ProspectDetailClient({
                 </Button>
               )}
 
-              {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && (
-                <Button variant="outline" className="w-full text-xs" size="sm" onClick={handleAvancer} disabled={loading || !action}>
-                  <ArrowRight className="w-3.5 h-3.5 mr-1" />
-                  {action?.label || 'Étape suivante'}
-                </Button>
-              )}
             </CardContent>
           </Card>
 
