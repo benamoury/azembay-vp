@@ -220,9 +220,15 @@ export function MonProspectDetailClient({
     setLoading(true)
     const result = await ajouterNote({ prospect_id: prospect.id, contenu: noteText })
     if (result.success) {
-      if ('note' in result && result.note) {
-        setNotes(prev => [{ ...(result.note as ClientNote), auteur: { prenom: '', nom: '' } }, ...prev])
-      }
+      setNotes(prev => [{
+        id: crypto.randomUUID(),
+        prospect_id: prospect.id,
+        auteur_id: '',
+        contenu: noteText,
+        temperature: undefined,
+        created_at: new Date().toISOString(),
+        auteur: { prenom: '', nom: '' },
+      } as NoteWithAuteur, ...prev])
       setNoteText('')
       toast({ title: '✓ Note ajoutée' })
     } else {
