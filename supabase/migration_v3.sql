@@ -259,6 +259,7 @@ ALTER TABLE lots
 -- ============================================================
 
 -- Supprimer les dépendances d'abord
+UPDATE prospects SET lot_cible_id = NULL;  -- couper FK avant delete lots
 DELETE FROM prospect_lots;
 DELETE FROM formulaires;
 DELETE FROM sejours;
