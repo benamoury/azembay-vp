@@ -50,10 +50,11 @@ export function CalendrierClient({ jours, sejours, weekends, prospects, apporteu
   const [sejourForm, setSejourForm] = useState({
     prospect_id: '',
     nb_adultes: 2,
-    nb_enfants: 0,
-    date_souhaitee_1: '',
-    date_souhaitee_2: '',
-    date_souhaitee_3: '',
+    nb_enfants_plus_6: 0,
+    nb_enfants_moins_6: 0,
+    weekend_id_1: '',
+    weekend_id_2: '',
+    weekend_id_3: '',
     notes: '',
   })
   const { toast } = useToast()
@@ -63,16 +64,19 @@ export function CalendrierClient({ jours, sejours, weekends, prospects, apporteu
 
   async function handleSoumettreSejourDemande(e: React.FormEvent) {
     e.preventDefault()
-    if (!sejourForm.prospect_id || !sejourForm.date_souhaitee_1 || !sejourForm.date_souhaitee_2 || !sejourForm.date_souhaitee_3) return
+    if (!sejourForm.prospect_id || !sejourForm.weekend_id_1 || !sejourForm.weekend_id_2 || !sejourForm.weekend_id_3) return
 
     setLoading(true)
     const result = await soumettreSejourDemande({
       prospect_id: sejourForm.prospect_id,
       nb_adultes: sejourForm.nb_adultes,
-      nb_enfants: sejourForm.nb_enfants,
-      date_souhaitee_1: sejourForm.date_souhaitee_1,
-      date_souhaitee_2: sejourForm.date_souhaitee_2,
-      date_souhaitee_3: sejourForm.date_souhaitee_3,
+      nb_enfants_plus_6: sejourForm.nb_enfants_plus_6,
+      nb_enfants_moins_6: sejourForm.nb_enfants_moins_6,
+      preferences_weekends: [
+        { rank: 1, weekend_id: sejourForm.weekend_id_1 },
+        { rank: 2, weekend_id: sejourForm.weekend_id_2 },
+        { rank: 3, weekend_id: sejourForm.weekend_id_3 },
+      ],
       notes_apporteur: sejourForm.notes || undefined,
     })
 
@@ -274,21 +278,25 @@ export function CalendrierClient({ jours, sejours, weekends, prospects, apporteu
               <p className="text-xs text-gray-400 mt-1">Seuls les prospects avec visite réalisée sont éligibles.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Adultes</Label>
                 <Input type="number" min={1} max={10} value={sejourForm.nb_adultes} onChange={e => setSejourForm(p => ({ ...p, nb_adultes: +e.target.value }))} />
               </div>
               <div>
-                <Label>Enfants (&gt;2 ans)</Label>
-                <Input type="number" min={0} max={10} value={sejourForm.nb_enfants} onChange={e => setSejourForm(p => ({ ...p, nb_enfants: +e.target.value }))} />
+                <Label>Enfants +6 ans</Label>
+                <Input type="number" min={0} max={10} value={sejourForm.nb_enfants_plus_6} onChange={e => setSejourForm(p => ({ ...p, nb_enfants_plus_6: +e.target.value }))} />
+              </div>
+              <div>
+                <Label>Enfants -6 ans</Label>
+                <Input type="number" min={0} max={10} value={sejourForm.nb_enfants_moins_6} onChange={e => setSejourForm(p => ({ ...p, nb_enfants_moins_6: +e.target.value }))} />
               </div>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium">3 dates souhaitées (ordonnées par préférence)</p>
+              <p className="text-sm font-medium">3 weekends souhaités (ordonnés par préférence)</p>
               <div className="space-y-2">
-                {(['date_souhaitee_1', 'date_souhaitee_2', 'date_souhaitee_3'] as const).map((field, i) => (
+                {(['weekend_id_1', 'weekend_id_2', 'weekend_id_3'] as const).map((field, i) => (
                   <div key={field}>
                     <Label className="text-xs">
                       {i === 0 ? '🥇 1er choix' : i === 1 ? '🥈 2ème choix' : '🥉 3ème choix'}
@@ -302,7 +310,7 @@ export function CalendrierClient({ jours, sejours, weekends, prospects, apporteu
                       </SelectTrigger>
                       <SelectContent>
                         {weekends.map(w => (
-                          <SelectItem key={w.id} value={w.date_vendredi}>
+                          <SelectItem key={w.id} value={w.id}>
                             {formatDate(w.date_vendredi)} · {w.nb_sejours_confirmes}/{w.seuil_guests} familles
                           </SelectItem>
                         ))}
@@ -327,7 +335,7 @@ export function CalendrierClient({ jours, sejours, weekends, prospects, apporteu
               <Button type="button" variant="outline" onClick={() => setShowSejourDialog(false)}>Annuler</Button>
               <Button
                 type="submit"
-                disabled={loading || !sejourForm.prospect_id || !sejourForm.date_souhaitee_1 || !sejourForm.date_souhaitee_2 || !sejourForm.date_souhaitee_3}
+                disabled={loading || !sejourForm.prospect_id || !sejourForm.weekend_id_1 || !sejourForm.weekend_id_2 || !sejourForm.weekend_id_3}
               >
                 Soumettre la demande
               </Button>

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   // Filtrer les prospects qui ne sont pas encore vendus
   const toNotify = sejours.filter(s => {
-    const p = s.prospect as { statut: string } | null
+    const p = s.prospect as unknown as { statut: string } | null
     return p && p.statut !== 'vendu'
   })
 
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   let sent = 0
   for (const s of toNotify) {
-    const p = s.prospect as { nom: string; prenom: string } | null
+    const p = s.prospect as unknown as { nom: string; prenom: string } | null
     if (!p) continue
 
     const emailData = buildEmailAlerteJ30({

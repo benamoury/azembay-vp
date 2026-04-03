@@ -32,8 +32,8 @@ export async function GET(request: Request) {
     .eq('statut', 'confirme')
 
   const participants = (sejours ?? []).map(s => {
-    const p = s.prospect as { nom: string; prenom: string } | null
-    const uh = s.stock_hebergement as { reference: string } | null
+    const p = s.prospect as unknown as { nom: string; prenom: string } | null
+    const uh = s.stock_hebergement as unknown as { reference: string } | null
     return {
       nom: p?.nom ?? '',
       prenom: p?.prenom ?? '',

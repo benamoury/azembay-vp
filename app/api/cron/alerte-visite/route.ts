@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     })
 
     const recipients: string[] = [...(managers?.map(m => m.email) ?? [])]
-    const ap = p.apporteur as { email: string } | null
+    const ap = p.apporteur as unknown as { email: string } | null
     if (ap?.email) recipients.push(ap.email)
 
     for (const email of recipients) {

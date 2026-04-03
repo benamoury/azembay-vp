@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { Hotel, CheckCircle, XCircle, AlertTriangle, DollarSign, Calendar } from 'lucide-react'
 import {
   confirmerSejour, declarerNoShow, confirmerRecouvrement,
-  marquerSejourRealise, annulerSejour, confirmerWeekend,
+  marquerSejourRealise, annulerSejour, validerWeekend,
 } from '@/actions/sejours'
 
 interface SejoursClientProps {
@@ -30,7 +30,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
   const [sejours, setSejours] = useState(initSejours)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [selectedSejour, setSelectedSejour] = useState<Sejour | null>(null)
-  const [confirmData, setConfirmData] = useState({ lot_id: '', weekend_id: '' })
+  const [confirmData, setConfirmData] = useState({ weekend_id: '' })
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'demandes' | 'confirmes' | 'noshow' | 'weekends'>('demandes')
   const { toast } = useToast()
@@ -42,20 +42,19 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
 
   function openConfirmDialog(sejour: Sejour) {
     setSelectedSejour(sejour)
-    setConfirmData({ lot_id: '', weekend_id: '' })
+    setConfirmData({ weekend_id: '' })
     setShowConfirmDialog(true)
   }
 
   async function handleConfirmer(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedSejour || !confirmData.lot_id || !confirmData.weekend_id) return
+    if (!selectedSejour || !confirmData.weekend_id) return
     setLoading(true)
 
     const weekend = weekends.find(w => w.id === confirmData.weekend_id)
     if (!weekend) return
 
     const result = await confirmerSejour(selectedSejour.id, {
-      lot_id: confirmData.lot_id,
       weekend_id: confirmData.weekend_id,
       date_arrivee: weekend.date_vendredi,
       date_depart: weekend.date_dimanche || (() => {
@@ -67,7 +66,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
 
     if (result.success) {
       setSejours(prev => prev.map(s => s.id === selectedSejour.id
-        ? { ...s, statut: 'confirme', lot_assigne_id: confirmData.lot_id, weekend_id: confirmData.weekend_id }
+        ? { ...s, statut: 'confirme', weekend_id: confirmData.weekend_id }
         : s
       ))
       setShowConfirmDialog(false)
@@ -128,7 +127,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
 
   async function handleConfirmerWeekend(weekendId: string) {
     setLoading(true)
-    const result = await confirmerWeekend(weekendId)
+    const result = await validerWeekend(weekendId)
     if (result.success) {
       toast({ title: 'Weekend confirmé — The Owners\' Club' })
     } else {
@@ -143,8 +142,6 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
     { key: 'noshow', label: `No-show (${sejoursNoShow.length})` },
     { key: 'weekends', label: `Weekends (${weekends.length})` },
   ]
-
-  const availableLots = lots.filter(l => l.statut === 'disponible')
 
   return (
     <div className="space-y-6">
@@ -186,7 +183,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
                       <div>
                         <p className="font-semibold text-[#1A3C6E]">{p?.prenom} {p?.nom}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {s.nb_adultes} adulte(s) · {s.nb_enfants} enfant(s)
+                          {s.nb_adultes} adulte(s) · {(s.nb_enfants_plus_6 ?? 0) + (s.nb_enfants_moins_6 ?? 0)} enfant(s)
                         </p>
                         <div className="mt-2 space-y-0.5">
                           {s.date_souhaitee_1 && (
@@ -228,7 +225,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
           ) : (
             sejoursConfirmes.map(s => {
               const p = s.prospect as { nom: string; prenom: string } | undefined
-              const lot = s.lot_assigne as { reference: string } | undefined
+              const lot = s.stock_hebergement as { reference: string } | undefined
               const isPast = s.date_depart < new Date().toISOString().split('T')[0]
               return (
                 <Card key={s.id}>
@@ -330,7 +327,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
               const sejoursWeekend = sejours.filter(s => s.weekend_id === w.id && s.statut !== 'annule')
               const pct = w.seuil_guests > 0 ? (w.nb_sejours_confirmes / w.seuil_guests) * 100 : 0
               return (
-                <Card key={w.id} className={cn('border', w.statut === 'confirme' ? 'border-blue-200 bg-blue-50/30' : w.statut === 'validation' ? 'border-orange-200' : '')}>
+                <Card key={w.id} className={cn('border', w.statut === 'valide' ? 'border-blue-200 bg-blue-50/30' : w.statut === 'complet' ? 'border-orange-200' : '')}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -366,9 +363,9 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
                           </div>
                         )}
                       </div>
-                      {w.statut === 'validation' && (
+                      {w.statut === 'ouvert' && (
                         <Button size="sm" onClick={() => handleConfirmerWeekend(w.id)} disabled={loading}>
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Confirmer weekend
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Valider weekend
                         </Button>
                       )}
                     </div>
@@ -393,7 +390,7 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
                   {(selectedSejour.prospect as { prenom: string; nom: string } | undefined)?.prenom}{' '}
                   {(selectedSejour.prospect as { prenom: string; nom: string } | undefined)?.nom}
                 </p>
-                <p className="text-gray-500">{selectedSejour.nb_adultes} adulte(s) · {selectedSejour.nb_enfants} enfant(s)</p>
+                <p className="text-gray-500">{selectedSejour.nb_adultes} adulte(s) · {(selectedSejour.nb_enfants_plus_6 ?? 0) + (selectedSejour.nb_enfants_moins_6 ?? 0)} enfant(s)</p>
                 {selectedSejour.date_souhaitee_1 && (
                   <p className="text-gray-500 mt-1">
                     Préférences : {formatDate(selectedSejour.date_souhaitee_1)}
@@ -419,26 +416,11 @@ export function SejoursClient({ sejours: initSejours, lots, weekends, factures, 
                 </Select>
               </div>
 
-              <div>
-                <Label>Lot assigné</Label>
-                <Select value={confirmData.lot_id} onValueChange={v => setConfirmData(p => ({ ...p, lot_id: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un lot..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableLots.map(l => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.reference} — {LOT_TYPE_LABELS[l.type as keyof typeof LOT_TYPE_LABELS]}
-                        {l.adultes_max && ` (max ${l.adultes_max}A/${l.enfants_max}E)`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-xs text-gray-400">L'unité d'hébergement sera assignée automatiquement selon disponibilité (FIFO).</p>
 
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setShowConfirmDialog(false)}>Annuler</Button>
-                <Button type="submit" disabled={loading || !confirmData.lot_id || !confirmData.weekend_id}>
+                <Button type="submit" disabled={loading || !confirmData.weekend_id}>
                   Confirmer & envoyer voucher
                 </Button>
               </div>

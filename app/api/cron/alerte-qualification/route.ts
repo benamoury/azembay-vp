@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   let sent = 0
   for (const p of prospects) {
-    const ap = p.apporteur as { nom: string; prenom: string } | null
+    const ap = p.apporteur as unknown as { nom: string; prenom: string } | null
     const apporteur_nom = ap ? `${ap.prenom} ${ap.nom}` : 'Apporteur'
     const emailData = buildEmailAlerteQualification({
       prospect: { nom: p.nom, prenom: p.prenom, id: p.id },

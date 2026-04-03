@@ -87,19 +87,18 @@ export async function demanderVisite(data: {
   await admin.from('prospects').update({ statut: 'visite_programmee' }).eq('id', data.prospect_id)
 
   // Envoyer les emails E4 (client) + E5 (apporteur)
-  const ap = prospect.apporteur as { nom: string; prenom: string; email: string; telephone?: string } | null
+  const apRaw = prospect.apporteur
+  const ap = (Array.isArray(apRaw) ? apRaw[0] : apRaw) as { nom: string; prenom: string; email: string; telephone?: string } | null | undefined
   const lien_annulation = annulation_token
     ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay-vp.vercel.app'}/annuler/${annulation_token}`
-    : undefined
+    : ''
 
-  if (prospect.email) {
+  if (prospect.email && ap) {
     const emailData = buildEmailConfirmationVisite({
       prospect: { nom: prospect.nom, prenom: prospect.prenom },
       date_visite: data.date_visite,
-      heure_visite: data.heure_visite,
-      apporteur: ap ? { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone } : undefined,
+      apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
       lien_annulation,
-      destinataire: 'client',
     })
     await sendEmail({ to: prospect.email, ...emailData })
   }
@@ -108,10 +107,8 @@ export async function demanderVisite(data: {
     const emailData = buildEmailConfirmationVisite({
       prospect: { nom: prospect.nom, prenom: prospect.prenom },
       date_visite: data.date_visite,
-      heure_visite: data.heure_visite,
       apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
       lien_annulation,
-      destinataire: 'apporteur',
     })
     await sendEmail({ to: ap.email, ...emailData })
   }
@@ -169,9 +166,8 @@ export async function annulerVisite(visiteId: string) {
 
       if (internRecipients.length > 0) {
         const internEmail = buildEmailAnnulationVisiteIntern({
-          prospect: { nom: prospect.nom, prenom: prospect.prenom },
+          prospect: { nom: prospect.nom, prenom: prospect.prenom, id: visite.prospect_id },
           date_visite: visite.date_visite,
-          heure_visite: visite.heure_visite,
         })
         await sendEmail({ to: internRecipients, ...internEmail })
       }
@@ -241,9 +237,8 @@ export async function annulerVisiteParToken(token: string) {
 
     if (internRecipients.length > 0) {
       const internEmail = buildEmailAnnulationVisiteIntern({
-        prospect: { nom: prospect.nom, prenom: prospect.prenom },
+        prospect: { nom: prospect.nom, prenom: prospect.prenom, id: visite.prospect_id },
         date_visite: visite.date_visite,
-        heure_visite: visite.heure_visite,
       })
       await sendEmail({ to: internRecipients, ...internEmail })
     }

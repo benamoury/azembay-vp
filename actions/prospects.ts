@@ -265,32 +265,6 @@ export async function creerVoucher(data: {
   // Advance prospect to visite_programmee
   await admin.from('prospects').update({ statut: 'visite_programmee' }).eq('id', data.prospect_id)
 
-  // Send email to client + apporteur + sécurité (copie)
-  const ap = voucher.apporteur as { email: string; nom: string; prenom: string; telephone?: string }
-  const prospect = voucher.prospect as { nom: string; prenom: string; email?: string }
-
-  const emailData = buildEmailVoucherEmis({
-    prospect: { nom: prospect.nom, prenom: prospect.prenom },
-    voucher: {
-      numero_voucher: voucher.numero_voucher,
-      date_visite: data.date_visite,
-      heure_visite: data.heure_visite,
-    },
-    apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
-  })
-
-  const recipients: string[] = []
-  if (prospect.email) recipients.push(prospect.email)
-  if (ap?.email && ap.email !== prospect.email) recipients.push(ap.email)
-
-  // Add security as copy
-  const { data: securite } = await admin.from('profiles').select('email').eq('role', 'securite')
-  for (const s of securite ?? []) recipients.push(s.email)
-
-  if (recipients.length > 0) {
-    await sendEmail({ to: recipients, ...emailData })
-  }
-
   return { success: true, voucher }
 }
 

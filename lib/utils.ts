@@ -36,6 +36,7 @@ export function formatDateTime(date: string | Date): string {
 
 export const PROSPECT_STATUT_LABELS: Record<ProspectStatut, string> = {
   soumis: 'Soumis',
+  qualifie: 'Qualifié',
   valide: 'Validé',
   visite_programmee: 'Visite programmée',
   visite_realisee: 'Visite réalisée',
@@ -49,6 +50,7 @@ export const PROSPECT_STATUT_LABELS: Record<ProspectStatut, string> = {
 
 export const PROSPECT_STATUT_COLORS: Record<ProspectStatut, string> = {
   soumis: 'bg-gray-100 text-gray-700 border-gray-200',
+  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
   valide: 'bg-green-100 text-green-700 border-green-200',
   visite_programmee: 'bg-blue-100 text-blue-700 border-blue-200',
   visite_realisee: 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -126,19 +128,17 @@ export const SEJOUR_STATUT_COLORS: Record<SejourStatut, string> = {
 }
 
 export const WEEKEND_STATUT_LABELS: Record<WeekendStatut, string> = {
-  pre_liste: 'Pré-listé',
   ouvert: 'Ouvert',
-  validation: 'En validation',
-  confirme: 'Confirmé',
-  ferme: 'Fermé',
+  valide: 'Validé',
+  complet: 'Complet',
+  passe: 'Passé',
 }
 
 export const WEEKEND_STATUT_COLORS: Record<WeekendStatut, string> = {
-  pre_liste: 'bg-gray-100 text-gray-500',
   ouvert: 'bg-green-100 text-green-700',
-  validation: 'bg-orange-100 text-orange-700',
-  confirme: 'bg-blue-100 text-blue-700',
-  ferme: 'bg-gray-100 text-gray-400',
+  valide: 'bg-blue-100 text-blue-700',
+  complet: 'bg-orange-100 text-orange-700',
+  passe: 'bg-gray-100 text-gray-400',
 }
 
 export const TEMPERATURE_LABELS: Record<number, string> = {

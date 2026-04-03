@@ -23,18 +23,18 @@ export async function GET(request: Request) {
     .neq('statut', 'annulee')
     .order('heure_visite')
 
-  const guests = (visites ?? []).map(v => {
-    const p = v.prospect as { nom: string; prenom: string } | null
+  const visiteurs = (visites ?? []).map(v => {
+    const p = v.prospect as unknown as { nom: string; prenom: string } | null
     return {
       nom: p?.nom ?? '',
       prenom: p?.prenom ?? '',
-      heure_visite: v.heure_visite ?? '',
+      heure: v.heure_visite ?? '',
     }
   })
 
   const emailData = buildEmailRecapSecurite({
-    date_visite: dateVisite,
-    guests,
+    date: dateVisite,
+    visiteurs,
   })
 
   const { data: recipients } = await admin
@@ -48,5 +48,5 @@ export async function GET(request: Request) {
     sent++
   }
 
-  return NextResponse.json({ sent, guests: guests.length, date: dateVisite })
+  return NextResponse.json({ sent, guests: visiteurs.length, date: dateVisite })
 }

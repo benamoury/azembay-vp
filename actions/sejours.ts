@@ -208,20 +208,21 @@ export async function confirmerSejour(sejourId: string, data: {
 
   // Incrémenter quota_sejours_utilise de l'apporteur
   if (prospect?.apporteur_id) {
-    await admin.rpc('increment_quota_sejours', { apporteur_id: prospect.apporteur_id }).catch(() => {
+    const apporteurId = prospect.apporteur_id
+    try {
+      await admin.rpc('increment_quota_sejours', { apporteur_id: apporteurId })
+    } catch {
       // Fallback si la fonction RPC n'existe pas encore
-      admin.from('profiles')
+      const { data: apProfile } = await admin.from('profiles')
         .select('quota_sejours_utilise')
-        .eq('id', prospect.apporteur_id)
+        .eq('id', apporteurId)
         .single()
-        .then(({ data: p }) => {
-          if (p) {
-            admin.from('profiles')
-              .update({ quota_sejours_utilise: (p.quota_sejours_utilise ?? 0) + 1 })
-              .eq('id', prospect.apporteur_id)
-          }
-        })
-    })
+      if (apProfile) {
+        await admin.from('profiles')
+          .update({ quota_sejours_utilise: (apProfile.quota_sejours_utilise ?? 0) + 1 })
+          .eq('id', apporteurId)
+      }
+    }
   }
 
   // Mettre à jour statut du prospect
