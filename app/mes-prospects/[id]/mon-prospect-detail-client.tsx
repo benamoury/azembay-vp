@@ -219,8 +219,10 @@ export function MonProspectDetailClient({
     if (!noteText.trim()) return
     setLoading(true)
     const result = await ajouterNote({ prospect_id: prospect.id, contenu: noteText })
-    if (result.success && result.note) {
-      setNotes(prev => [{ ...result.note!, auteur: { prenom: '', nom: '' } }, ...prev])
+    if (result.success) {
+      if ('note' in result && result.note) {
+        setNotes(prev => [{ ...(result.note as ClientNote), auteur: { prenom: '', nom: '' } }, ...prev])
+      }
       setNoteText('')
       toast({ title: '✓ Note ajoutée' })
     } else {
