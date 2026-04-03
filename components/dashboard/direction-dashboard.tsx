@@ -245,13 +245,15 @@ export function DirectionDashboard({ lots, prospects, ventes, sejours, factures 
           <CardTitle className="text-[#1A3C6E] text-sm">Pipeline CRM global</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-2">
-            {(['soumis', 'valide', 'visite_realisee', 'formulaire_signe', 'vendu'] as const).map(statut => {
+          <div className="grid grid-cols-6 gap-2">
+            {(['soumis', 'qualifie', 'valide', 'visite_realisee', 'formulaire_signe', 'vendu'] as const).map(statut => {
               const count = prospects.filter(p => p.statut === statut).length
+              const isAlert = statut === 'qualifie' && count > 0
               return (
-                <div key={statut} className="text-center">
-                  <p className="text-2xl font-bold text-[#1A3C6E]">{count}</p>
+                <div key={statut} className={`text-center p-2 rounded-lg ${isAlert ? 'bg-amber-50 border border-amber-200' : ''}`}>
+                  <p className={`text-2xl font-bold ${isAlert ? 'text-amber-600' : 'text-[#1A3C6E]'}`}>{count}</p>
                   <p className="text-xs text-gray-500 mt-1">{PROSPECT_STATUT_LABELS[statut]}</p>
+                  {isAlert && <p className="text-[10px] text-amber-500 mt-0.5">À valider</p>}
                 </div>
               )
             })}

@@ -5,33 +5,44 @@ import { Progress } from '@/components/ui/progress'
 import { formatCurrency, PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS } from '@/lib/utils'
 import type { Prospect, Vente } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Target, TrendingUp, Users, Hotel, Calendar, AlertCircle } from 'lucide-react'
+import { Target, TrendingUp, Users, Hotel, Calendar, AlertCircle, Home } from 'lucide-react'
 import Link from 'next/link'
+
+type LotDisponible = {
+  id: string; reference: string; type: string; prix_individuel: number; prix_bloc?: number
+}
 
 interface ApporteurDashboardProps {
   prospects: Prospect[]
   ventes: Vente[]
   sejours: { id: string; statut: string; date_arrivee: string; date_depart: string }[]
   visites: { id: string; statut: string; date_visite: string }[]
+  lotsDisponibles: LotDisponible[]
   quotaUsed: number
+  quotaMax: number
   nom: string
   prenom: string
 }
 
-const QUOTA_MAX = 6
 const OBJECTIF_VENTES = 3
 const COMMISSION_RATE = 0.02
 
-export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaUsed, nom, prenom }: ApporteurDashboardProps) {
+const LOT_TYPE_LABELS: Record<string, string> = {
+  villa_e: 'Villa Type E',
+  appart_2ch: 'Appart. 2CH',
+  appart_1ch: 'Appart. 1CH',
+}
+
+export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDisponibles, quotaUsed, quotaMax, nom, prenom }: ApporteurDashboardProps) {
   const ventesAcquises = ventes.filter(v => v.statut === 'acte_signe')
   const commissionAcquise = ventesAcquises.reduce((sum, v) => sum + (v.commission_apporteur || v.prix_notarie * COMMISSION_RATE), 0)
   const commissionEstimee = ventes.filter(v => v.statut === 'en_cours').reduce((sum, v) => sum + v.prix_notarie * COMMISSION_RATE, 0)
 
   const progression = Math.min((ventesAcquises.length / OBJECTIF_VENTES) * 100, 100)
-  const quotaRestant = QUOTA_MAX - quotaUsed
-  const quotaPct = (quotaUsed / QUOTA_MAX) * 100
+  const quotaRestant = quotaMax - quotaUsed
+  const quotaPct = (quotaUsed / quotaMax) * 100
 
-  const visitesEnAttente = visites.filter(v => v.statut === 'demandee').length
+  const visitesActives = visites.filter(v => !['annulee'].includes(v.statut)).length
   const sejoursConfirmes = sejours.filter(s => s.statut === 'confirme').length
   const sejoursEnAttente = sejours.filter(s => s.statut === 'demande').length
 
@@ -71,8 +82,7 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaU
               </div>
               <div>
                 <p className="text-xs text-gray-500">Visites</p>
-                <p className="text-xl font-bold text-[#1A3C6E]">{visites.length}</p>
-                {visitesEnAttente > 0 && <p className="text-[10px] text-orange-500">{visitesEnAttente} en attente</p>}
+                <p className="text-xl font-bold text-[#1A3C6E]">{visitesActives}</p>
               </div>
             </div>
           </CardContent>
@@ -102,7 +112,7 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaU
               </div>
               <div>
                 <p className="text-xs text-gray-500">Quota séjours</p>
-                <p className="text-xl font-bold text-[#1A3C6E]">{quotaUsed}<span className="text-sm text-gray-400">/{QUOTA_MAX}</span></p>
+                <p className="text-xl font-bold text-[#1A3C6E]">{quotaUsed}<span className="text-sm text-gray-400">/{quotaMax}</span></p>
                 {quotaRestant === 0 && <p className="text-[10px] text-red-500">Quota atteint</p>}
                 {quotaRestant === 1 && <p className="text-[10px] text-orange-500">1 place restante</p>}
               </div>
@@ -130,7 +140,7 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaU
           {quotaRestant === 0 && (
             <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 p-2 rounded-lg">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              Vous avez atteint votre quota de {QUOTA_MAX} séjours pour cette session.
+              Vous avez atteint votre quota de {quotaMax} séjours pour cette session.
             </div>
           )}
         </CardContent>
@@ -180,8 +190,8 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaU
               <span className="text-sm font-medium text-[#1A3C6E]">Mes prospects</span>
               <TrendingUp className="w-4 h-4 text-[#C8973A]" />
             </Link>
-            <Link href="/calendrier" className="flex items-center justify-between p-3 bg-[#1A3C6E]/5 rounded-lg hover:bg-[#1A3C6E]/10 transition-colors">
-              <span className="text-sm font-medium text-[#1A3C6E]">Calendrier des visites</span>
+            <Link href="/mes-prospects" className="flex items-center justify-between p-3 bg-[#1A3C6E]/5 rounded-lg hover:bg-[#1A3C6E]/10 transition-colors">
+              <span className="text-sm font-medium text-[#1A3C6E]">Planifier une visite / séjour</span>
               <Calendar className="w-4 h-4 text-[#C8973A]" />
             </Link>
           </CardContent>
@@ -206,6 +216,34 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, quotaU
           </div>
         </CardContent>
       </Card>
+
+      {/* Lots disponibles */}
+      {lotsDisponibles.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[#1A3C6E] text-sm flex items-center gap-2">
+              <Home className="w-4 h-4 text-[#C8973A]" />
+              Lots disponibles — {lotsDisponibles.length} unité(s)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              {lotsDisponibles.map(lot => (
+                <div key={lot.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                  <div>
+                    <span className="font-mono text-xs font-bold text-[#1A3C6E]">{lot.reference}</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{LOT_TYPE_LABELS[lot.type] ?? lot.type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-[#C8973A]">{formatCurrency(lot.prix_individuel)}</p>
+                    {lot.prix_bloc && <p className="text-[10px] text-gray-400">Bloc : {formatCurrency(lot.prix_bloc)}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -7,11 +7,8 @@ import {
   Text,
   View,
   StyleSheet,
-  Image,
-  Font,
 } from '@react-pdf/renderer'
 
-// Note: QR code is rendered as base64 image, generated server-side
 interface VoucherPDFProps {
   numeroVoucher: string
   prospectNom: string
@@ -20,7 +17,6 @@ interface VoucherPDFProps {
   heureVisite: string
   apporteurNom: string
   apporteurPrenom: string
-  qrCodeDataUrl: string // base64 QR code image
 }
 
 const styles = StyleSheet.create({
@@ -92,32 +88,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
     marginVertical: 20,
   },
-  qrSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    padding: 20,
+  infoBox: {
+    padding: 16,
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     marginTop: 16,
   },
-  qrImage: {
-    width: 80,
-    height: 80,
-  },
-  qrText: {
-    flex: 1,
-  },
-  qrTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#1A3C6E',
-    marginBottom: 4,
-  },
-  qrSub: {
-    fontSize: 8,
+  infoText: {
+    fontSize: 9,
     color: '#64748B',
-    lineHeight: 1.5,
+    lineHeight: 1.6,
   },
   confidential: {
     position: 'absolute',
@@ -172,7 +152,6 @@ export function VoucherPDF({
   heureVisite,
   apporteurNom,
   apporteurPrenom,
-  qrCodeDataUrl,
 }: VoucherPDFProps) {
   return (
     <Document
@@ -228,17 +207,12 @@ export function VoucherPDF({
             <Text style={styles.sectionValueSmall}>{apporteurPrenom} {apporteurNom}</Text>
           </View>
 
-          {/* QR Code */}
-          <View style={styles.qrSection}>
-            <Image src={qrCodeDataUrl} style={styles.qrImage} />
-            <View style={styles.qrText}>
-              <Text style={styles.qrTitle}>Code d'accès sécurisé</Text>
-              <Text style={styles.qrSub}>
-                Ce voucher est nominatif et personnel.{'\n'}
-                Présentez-le à l'entrée du site Azembay.{'\n'}
-                Toute reproduction est strictement interdite.
-              </Text>
-            </View>
+          {/* Instructions */}
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              Ce voucher est nominatif et personnel. Présentez-le à votre arrivée sur le site Azembay accompagné d'une pièce d'identité.{'\n'}
+              Toute reproduction est strictement interdite.
+            </Text>
           </View>
         </View>
 
