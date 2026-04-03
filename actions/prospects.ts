@@ -4,8 +4,8 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import {
   sendEmail,
   buildEmailNouveauProspect,
+  buildEmailProspectQualifie,
   buildEmailProspectValide,
-  buildEmailVoucherEmis,
 } from '@/lib/email/resend'
 import type { ProspectStatut } from '@/lib/types'
 
@@ -37,18 +37,30 @@ export async function soumettreProspect(data: {
 
   if (error) return { success: false, error: error.message }
 
-  // Notify manager(s)
+  // Notifier les managers uniquement (pas la Direction — E1)
   const { data: managers } = await supabase
     .from('profiles')
     .select('email')
-    .in('role', ['manager', 'direction'])
+    .eq('role', 'manager')
+
+  // Récupérer le nom de l'apporteur
+  const { data: apporteurProfile } = await supabase
+    .from('profiles')
+    .select('nom, prenom')
+    .eq('id', data.apporteur_id)
+    .single()
+
+  const apporteur_nom = apporteurProfile
+    ? `${apporteurProfile.prenom} ${apporteurProfile.nom}`
+    : undefined
 
   if (managers) {
     const emailData = buildEmailNouveauProspect({
       nom: data.nom,
       prenom: data.prenom,
       email: data.email,
-      budget_estime: data.budget_estime,
+      apporteur_nom,
+      prospect_id: prospect.id,
     })
     for (const m of managers) {
       await sendEmail({ to: m.email, ...emailData })
@@ -58,7 +70,83 @@ export async function soumettreProspect(data: {
   return { success: true, prospect }
 }
 
-export async function validerProspect(prospectId: string) {
+// ─── Étape 2 : Manager qualifie (note obligatoire en base requise) ─────────────
+
+export async function qualifierProspect(prospectId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  // Vérifier qu'au moins une note existe pour ce prospect
+  const { count } = await admin
+    .from('client_notes')
+    .select('id', { count: 'exact', head: true })
+    .eq('prospect_id', prospectId)
+
+  if (!count || count === 0) {
+    return { success: false, error: 'Une note de qualification est obligatoire avant de qualifier ce prospect.' }
+  }
+
+  // Récupérer les notes et infos du prospect
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('*, apporteur:profiles!apporteur_id(nom,prenom,email)')
+    .eq('id', prospectId)
+    .single()
+
+  if (!prospect) return { success: false, error: 'Prospect non trouvé' }
+
+  const { data: notes } = await admin
+    .from('client_notes')
+    .select('contenu, created_at')
+    .eq('prospect_id', prospectId)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  const notesText = notes?.map(n => n.contenu).join('\n---\n') ?? ''
+
+  // Mettre à jour le statut
+  const { error } = await admin
+    .from('prospects')
+    .update({ statut: 'qualifie' })
+    .eq('id', prospectId)
+
+  if (error) return { success: false, error: error.message }
+
+  // Récupérer le profil du manager pour le nom
+  const { data: managerProfile } = await admin
+    .from('profiles')
+    .select('nom, prenom')
+    .eq('id', user.id)
+    .single()
+
+  const apporteur = prospect.apporteur as { nom: string; prenom: string; email: string } | null
+  const apporteur_nom = apporteur ? `${apporteur.prenom} ${apporteur.nom}` : 'Apporteur'
+
+  // E2 → Direction
+  const { data: directions } = await admin
+    .from('profiles')
+    .select('email')
+    .eq('role', 'direction')
+
+  const emailData = buildEmailProspectQualifie({
+    prospect: { nom: prospect.nom, prenom: prospect.prenom, email: prospect.email, id: prospect.id },
+    apporteur_nom,
+    notes: notesText,
+  })
+
+  for (const d of directions ?? []) {
+    await sendEmail({ to: d.email, ...emailData })
+  }
+
+  return { success: true }
+}
+
+// ─── Étape 3 : Direction approuve ──────────────────────────────────────────────
+
+export async function approuverProspect(prospectId: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Non authentifié' }
@@ -73,19 +161,26 @@ export async function validerProspect(prospectId: string) {
       validated_at: new Date().toISOString(),
     })
     .eq('id', prospectId)
-    .select('*, apporteur:profiles!apporteur_id(email,nom,prenom)')
+    .select('*, apporteur:profiles!apporteur_id(email,nom,prenom,id)')
     .single()
 
   if (error) return { success: false, error: error.message }
 
-  // Notify apporteur
+  // E3 → Apporteur
   if (prospect?.apporteur) {
-    const ap = prospect.apporteur as { email: string; nom: string; prenom: string }
-    const emailData = buildEmailProspectValide({ nom: prospect.nom, prenom: prospect.prenom })
+    const ap = prospect.apporteur as { email: string; nom: string; prenom: string; id: string }
+    const emailData = buildEmailProspectValide({
+      prospect: { nom: prospect.nom, prenom: prospect.prenom, id: prospect.id },
+    })
     await sendEmail({ to: ap.email, ...emailData })
   }
 
   return { success: true }
+}
+
+// Alias legacy conservé pour compatibilité avec pages existantes
+export async function validerProspect(prospectId: string) {
+  return approuverProspect(prospectId)
 }
 
 export async function rejeterProspect(prospectId: string) {
@@ -332,4 +427,43 @@ export async function modifierStatutLot(lotId: string, statut: 'disponible' | 'b
   const { error } = await admin.from('lots').update({ statut }).eq('id', lotId)
   if (error) return { success: false, error: error.message }
   return { success: true }
+}
+
+export async function modifierPrixLot(lotId: string, data: { prix_individuel?: number; prix_bloc?: number }) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('lots').update(data).eq('id', lotId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+// ─── Prospect Lots (multi-lots N-N) ───────────────────────────────────────────
+
+export async function ajouterLotProspect(prospectId: string, lotId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('prospect_lots')
+    .insert({ prospect_id: prospectId, lot_id: lotId })
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function retirerLotProspect(prospectId: string, lotId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('prospect_lots')
+    .delete()
+    .eq('prospect_id', prospectId)
+    .eq('lot_id', lotId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function getLotsDuProspect(prospectId: string) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('prospect_lots')
+    .select('*, lot:lots(*)')
+    .eq('prospect_id', prospectId)
+  if (error) return []
+  return data ?? []
 }

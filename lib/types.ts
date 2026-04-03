@@ -5,6 +5,7 @@ export type ProspectProfil = 'investisseur_pur' | 'residence_secondaire'
 export type ProspectLocalisation = 'hors_casa' | 'nmr' | 'casablanca'
 export type ProspectStatut =
   | 'soumis'
+  | 'qualifie'
   | 'valide'
   | 'visite_programmee'
   | 'visite_realisee'
@@ -24,9 +25,9 @@ export type FormulaireType = 'avec_acompte' | 'sans_acompte'
 export type ProgrammeHotelier = 'standard' | 'investisseur' | 'flexible'
 export type FormulaireStatut = 'signe' | 'retracte' | 'expire' | 'converti'
 export type SejourStatut = 'demande' | 'confirme' | 'realise' | 'no_show' | 'annule'
-export type VisiteStatut = 'demandee' | 'confirmee_manager' | 'confirmee_securite' | 'realisee' | 'annulee'
+export type VisiteStatut = 'confirmee' | 'realisee' | 'annulee'
 export type VenteStatut = 'en_cours' | 'acte_signe' | 'annule'
-export type WeekendStatut = 'pre_liste' | 'ouvert' | 'validation' | 'confirme' | 'ferme'
+export type WeekendStatut = 'ouvert' | 'valide' | 'complet' | 'passe'
 export type FactureStatut = 'emise' | 'payee' | 'avoir'
 
 export interface Profile {
@@ -36,6 +37,8 @@ export interface Profile {
   nom: string
   prenom: string
   telephone?: string
+  quota_sejours_utilise?: number
+  quota_sejours_max?: number
   created_at: string
 }
 
@@ -45,14 +48,18 @@ export interface Lot {
   type: LotType
   surface_hab?: number
   surface_terrain?: number
+  loggias?: number
+  terrasses?: number
+  jardin?: number
+  surface_cadastrale?: number
+  surface_hab_ajustee?: number
+  titre_foncier?: string
   prix_bloc?: number
   prix_individuel: number
   statut: LotStatut
   programme_hotelier?: string
   loyer_fixe?: number
   forfait_amenagement?: number
-  adultes_max?: number
-  enfants_max?: number
   created_at: string
 }
 
@@ -158,7 +165,8 @@ export interface Weekend {
   statut: WeekendStatut
   actif: boolean
   notes?: string
-  confirmed_at?: string
+  valide_at?: string
+  valide_by?: string
   created_at: string
 }
 
@@ -173,9 +181,13 @@ export interface Sejour {
   date_souhaitee_1?: string
   date_souhaitee_2?: string
   date_souhaitee_3?: string
+  preferences_weekends?: { rank: number; weekend_id: string }[]
   nb_adultes: number
-  nb_enfants: number
-  lot_assigne_id?: string
+  nb_enfants_total?: number
+  nb_enfants_plus_6: number
+  nb_enfants_moins_6: number
+  stock_hebergement_id?: string
+  annulation_token_id?: string
   statut: SejourStatut
   gratuit: boolean
   montant_facturable?: number
@@ -186,12 +198,11 @@ export interface Sejour {
   facture_envoyee: boolean
   recouvre_confirme_by?: string
   recouvre_confirme_at?: string
-  lot_libere_at?: string
   notes_manager?: string
   created_at: string
   updated_at?: string
   prospect?: Prospect
-  lot_assigne?: Lot
+  stock_hebergement?: StockHebergement
   weekend?: Weekend
 }
 
@@ -246,19 +257,22 @@ export interface JourDisponible {
 export interface Visite {
   id: string
   prospect_id: string
+  apporteur_id?: string
   jour_id: string
   date_visite: string
+  heure_visite?: string
   statut: VisiteStatut
+  arrivee_validee: boolean
+  arrivee_validee_at?: string
+  presence_manager: boolean
+  presence_manager_validee_at?: string
+  annulation_token?: string
   notes_apporteur?: string
-  notes_securite?: string
-  confirmed_by?: string
-  confirmed_securite_by?: string
-  confirmed_manager_at?: string
-  confirmed_securite_at?: string
   created_at: string
   updated_at: string
   prospect?: Prospect
   jour?: JourDisponible
+  apporteur?: Profile
 }
 
 export interface Vente {
@@ -276,4 +290,33 @@ export interface Vente {
   prospect?: Prospect
   lot?: Lot
   apporteur?: Profile
+}
+
+export interface StockHebergement {
+  id: string
+  reference: string
+  type: LotType
+  adultes_max: number
+  enfants_max: number
+  disponible: boolean
+  notes?: string
+  created_at: string
+}
+
+export interface AnnulationToken {
+  id: string
+  token: string
+  type: 'visite' | 'sejour'
+  reference_id: string
+  expires_at: string
+  used_at?: string
+  created_at: string
+}
+
+export interface ProspectLot {
+  id: string
+  prospect_id: string
+  lot_id: string
+  created_at: string
+  lot?: Lot
 }

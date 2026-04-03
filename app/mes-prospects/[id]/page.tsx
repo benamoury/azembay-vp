@@ -22,12 +22,26 @@ export default async function MonProspectDetailPage({ params }: { params: { id: 
 
   if (!prospect) notFound()
 
-  const [{ data: visites }, { data: sejours }, { data: notes }, { data: jours }, { data: visiteCounts }] = await Promise.all([
+  const [
+    { data: visites },
+    { data: sejours },
+    { data: notes },
+    { data: jours },
+    { data: visiteCounts },
+    { data: weekends },
+    { data: prospectLots },
+    { data: lotsDisponibles },
+    { data: apporteurProfile },
+  ] = await Promise.all([
     admin.from('visites').select('*, jour:jours_disponibles(date,prioritaire)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
-    admin.from('sejours').select('*, lot_assigne:lots(reference)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
+    admin.from('sejours').select('*, stock_hebergement:stock_hebergement(reference)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('client_notes').select('*, auteur:profiles!auteur_id(prenom,nom)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('jours_disponibles').select('*').eq('actif', true).gte('date', new Date().toISOString().split('T')[0]).order('date'),
     admin.from('visites').select('jour_id').neq('statut', 'annulee'),
+    admin.from('weekends_actives').select('*').eq('actif', true).in('statut', ['ouvert', 'valide']).order('date_vendredi'),
+    admin.from('prospect_lots').select('*, lot:lots(*)').eq('prospect_id', params.id),
+    admin.from('lots').select('id, reference, type, prix_individuel, prix_bloc, statut').eq('statut', 'disponible').order('reference'),
+    admin.from('profiles').select('quota_sejours_utilise, quota_sejours_max').eq('id', user.id).single(),
   ])
 
   const countMap: Record<string, number> = {}
@@ -42,8 +56,13 @@ export default async function MonProspectDetailPage({ params }: { params: { id: 
         sejours={sejours || []}
         notes={notes || []}
         jours={joursWithCounts}
+        weekends={weekends || []}
+        prospectLots={prospectLots || []}
+        lotsDisponibles={lotsDisponibles || []}
         userId={user.id}
         apporteurNom={`${profile.prenom} ${profile.nom}`}
+        quotaUtilise={apporteurProfile?.quota_sejours_utilise ?? 0}
+        quotaMax={apporteurProfile?.quota_sejours_max ?? 6}
       />
     </AppLayout>
   )

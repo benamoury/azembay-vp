@@ -14,16 +14,17 @@ export default async function GuestListPage() {
   const today = new Date().toISOString().split('T')[0]
   const admin = createAdminClient()
 
-  const { data: vouchers } = await admin
-    .from('vouchers')
-    .select('*, prospect:prospects(nom,prenom,email,telephone)')
+  const { data: visites } = await admin
+    .from('visites')
+    .select('*, prospect:prospects(nom,prenom,email,telephone), apporteur:profiles!apporteur_id(nom,prenom,telephone)')
     .eq('date_visite', today)
+    .neq('statut', 'annulee')
     .order('heure_visite')
 
   return (
     <AppLayout role={profile.role} nom={profile.nom} prenom={profile.prenom}>
       <GuestListClient
-        vouchers={vouchers || []}
+        visites={visites || []}
         today={today}
       />
     </AppLayout>

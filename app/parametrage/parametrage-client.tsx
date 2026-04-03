@@ -12,7 +12,7 @@ import { formatCurrency, ROLE_LABELS, LOT_TYPE_LABELS } from '@/lib/utils'
 import type { Profile, Lot, Document } from '@/lib/types'
 import { useToast } from '@/components/ui/use-toast'
 import { Users, Home, FileText, Plus, Calendar, Hotel, Trash2, Star, ToggleLeft, ToggleRight } from 'lucide-react'
-import { creerUtilisateur, modifierStatutLot } from '@/actions/prospects'
+import { creerUtilisateur, modifierStatutLot, modifierPrixLot } from '@/actions/prospects'
 import { creerJourDisponible, supprimerJourDisponible, toggleJourActif, creerWeekend, supprimerWeekend } from '@/actions/planning'
 import { cn } from '@/lib/utils'
 
@@ -43,19 +43,17 @@ interface ParametrageClientProps {
 }
 
 const WEEKEND_STATUT_COLORS: Record<string, string> = {
-  pre_liste: 'bg-gray-100 text-gray-600',
   ouvert: 'bg-green-100 text-green-700',
-  validation: 'bg-yellow-100 text-yellow-700',
-  confirme: 'bg-blue-100 text-blue-700',
-  ferme: 'bg-red-100 text-red-600',
+  valide: 'bg-blue-100 text-blue-700',
+  complet: 'bg-amber-100 text-amber-700',
+  passe: 'bg-gray-100 text-gray-500',
 }
 
 const WEEKEND_STATUT_LABELS: Record<string, string> = {
-  pre_liste: 'Pré-liste',
   ouvert: 'Ouvert',
-  validation: 'En validation',
-  confirme: 'Confirmé',
-  ferme: 'Fermé',
+  valide: 'Validé',
+  complet: 'Complet',
+  passe: 'Passé',
 }
 
 export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, documents, jours: initJours, weekends: initWeekends }: ParametrageClientProps) {
@@ -64,6 +62,8 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
   const [jours, setJours] = useState(initJours)
   const [weekends, setWeekends] = useState(initWeekends)
   const [newUser, setNewUser] = useState({ email: '', prenom: '', nom: '', telephone: '', role: 'apporteur' as const })
+  const [editingLot, setEditingLot] = useState<string | null>(null)
+  const [lotPrix, setLotPrix] = useState<{ prix_individuel: string; prix_bloc: string }>({ prix_individuel: '', prix_bloc: '' })
   const [newJour, setNewJour] = useState({ date: '', capacite: 3, prioritaire: false, actif: true })
   const [newWeekend, setNewWeekend] = useState({ date_vendredi: '', date_samedi: '', date_dimanche: '', capacite_max: 6 })
   const [loading, setLoading] = useState(false)
@@ -101,6 +101,32 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
     if (result.success) {
       setLots(prev => prev.map(l => l.id === lotId ? { ...l, statut: statut as never } : l))
       toast({ title: 'Lot mis à jour' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  function startEditLot(lot: Lot) {
+    setEditingLot(lot.id)
+    setLotPrix({
+      prix_individuel: String(lot.prix_individuel),
+      prix_bloc: String(lot.prix_bloc ?? ''),
+    })
+  }
+
+  async function handleSavePrix(lotId: string) {
+    const result = await modifierPrixLot(lotId, {
+      prix_individuel: lotPrix.prix_individuel ? Number(lotPrix.prix_individuel) : undefined,
+      prix_bloc: lotPrix.prix_bloc ? Number(lotPrix.prix_bloc) : undefined,
+    })
+    if (result.success) {
+      setLots(prev => prev.map(l => l.id === lotId ? {
+        ...l,
+        prix_individuel: Number(lotPrix.prix_individuel),
+        prix_bloc: lotPrix.prix_bloc ? Number(lotPrix.prix_bloc) : l.prix_bloc,
+      } : l))
+      setEditingLot(null)
+      toast({ title: 'Prix mis à jour' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -266,28 +292,70 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
         {/* Lots */}
         <TabsContent value="lots" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-[#1A3C6E]">Gestion des 16 lots</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-[#1A3C6E]">Lots & Prix ({lots.length} lots)</CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {lots.map(lot => (
-                  <div key={lot.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-4">
-                      <span className="font-mono text-sm font-bold text-[#1A3C6E] w-24">{lot.reference}</span>
-                      <div>
-                        <p className="text-sm">{LOT_TYPE_LABELS[lot.type]}</p>
-                        <p className="text-xs text-gray-400">{formatCurrency(lot.prix_individuel)}</p>
+                  <div key={lot.id} className="py-3 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <span className="font-mono text-sm font-bold text-[#1A3C6E] w-20 flex-shrink-0">{lot.reference}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{LOT_TYPE_LABELS[lot.type]}</p>
+                          {editingLot === lot.id ? (
+                            <div className="flex gap-2 mt-1">
+                              <div>
+                                <Label className="text-xs text-gray-400">Prix individuel (MAD)</Label>
+                                <Input
+                                  type="number"
+                                  value={lotPrix.prix_individuel}
+                                  onChange={e => setLotPrix(p => ({ ...p, prix_individuel: e.target.value }))}
+                                  className="w-36 h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-gray-400">Prix bloc (MAD)</Label>
+                                <Input
+                                  type="number"
+                                  value={lotPrix.prix_bloc}
+                                  onChange={e => setLotPrix(p => ({ ...p, prix_bloc: e.target.value }))}
+                                  className="w-36 h-7 text-xs"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400">
+                              {formatCurrency(lot.prix_individuel)}
+                              {lot.prix_bloc ? ` · Bloc : ${formatCurrency(lot.prix_bloc)}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        {editingLot === lot.id ? (
+                          <>
+                            <Button size="sm" onClick={() => handleSavePrix(lot.id)} className="h-8 text-xs">Enregistrer</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingLot(null)} className="h-8 text-xs">Annuler</Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => startEditLot(lot)} className="h-8 text-xs text-[#C8973A]">
+                            Modifier prix
+                          </Button>
+                        )}
+                        <Select value={lot.statut} onValueChange={v => handleLotStatut(lot.id, v)}>
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="disponible">Disponible</SelectItem>
+                            <SelectItem value="bloque">Bloqué</SelectItem>
+                            <SelectItem value="vendu">Vendu</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <Select value={lot.statut} onValueChange={v => handleLotStatut(lot.id, v)}>
-                      <SelectTrigger className="w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="disponible">Disponible</SelectItem>
-                        <SelectItem value="bloque">Bloqué</SelectItem>
-                        <SelectItem value="vendu">Vendu</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 ))}
               </div>
