@@ -1,16 +1,27 @@
 'use server'
 
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import {
+  sendEmail,
+  buildEmailConfirmationVisite,
+  buildEmailAnnulationVisiteClient,
+  buildEmailAnnulationVisiteIntern,
+} from '@/lib/email/resend'
 
 export async function demanderVisite(data: {
   prospect_id: string
   jour_id: string
   date_visite: string
+  heure_visite?: string
   notes_apporteur?: string
 }) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
   const admin = createAdminClient()
 
-  // Check capacity
+  // Vérifier la disponibilité du jour
   const { data: jour } = await admin
     .from('jours_disponibles')
     .select('id, capacite, actif')
@@ -27,7 +38,7 @@ export async function demanderVisite(data: {
 
   if ((count ?? 0) >= jour.capacite) return { success: false, error: 'Capacité maximale atteinte pour cette date' }
 
-  // Check no existing visit for this prospect
+  // Vérifier qu'il n'y a pas déjà une visite pour ce prospect
   const { data: existing } = await admin
     .from('visites')
     .select('id')
@@ -37,21 +48,208 @@ export async function demanderVisite(data: {
 
   if (existing) return { success: false, error: 'Ce prospect a déjà une visite planifiée' }
 
+  // Récupérer le prospect et son apporteur
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('nom, prenom, email, apporteur_id, apporteur:profiles!apporteur_id(nom, prenom, email, telephone)')
+    .eq('id', data.prospect_id)
+    .single()
+
+  if (!prospect) return { success: false, error: 'Prospect non trouvé' }
+
+  // Créer le token d'annulation
+  const { data: tokenRow } = await admin
+    .from('annulation_tokens')
+    .insert({
+      type: 'visite',
+      reference_id: data.prospect_id,
+    })
+    .select('token')
+    .single()
+
+  const annulation_token = tokenRow?.token
+
+  // Créer la visite directement en 'confirmee' (pas de double validation)
   const { data: visite, error } = await admin
     .from('visites')
-    .insert({ ...data, statut: 'demandee' })
+    .insert({
+      ...data,
+      apporteur_id: prospect.apporteur_id,
+      statut: 'confirmee',
+      annulation_token,
+    })
     .select()
     .single()
 
   if (error) return { success: false, error: error.message }
 
-  // Update prospect statut
+  // Mettre à jour le statut du prospect
   await admin.from('prospects').update({ statut: 'visite_programmee' }).eq('id', data.prospect_id)
+
+  // Envoyer les emails E4 (client) + E5 (apporteur)
+  const apRaw = prospect.apporteur
+  const ap = (Array.isArray(apRaw) ? apRaw[0] : apRaw) as { nom: string; prenom: string; email: string; telephone?: string } | null | undefined
+  const lien_annulation = annulation_token
+    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay-vp.vercel.app'}/annuler/${annulation_token}`
+    : ''
+
+  if (prospect.email && ap) {
+    const emailData = buildEmailConfirmationVisite({
+      prospect: { nom: prospect.nom, prenom: prospect.prenom },
+      date_visite: data.date_visite,
+      apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
+      lien_annulation,
+    })
+    await sendEmail({ to: prospect.email, ...emailData })
+  }
+
+  if (ap?.email) {
+    const emailData = buildEmailConfirmationVisite({
+      prospect: { nom: prospect.nom, prenom: prospect.prenom },
+      date_visite: data.date_visite,
+      apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
+      lien_annulation,
+    })
+    await sendEmail({ to: ap.email, ...emailData })
+  }
 
   return { success: true, visite }
 }
 
-export async function confirmerVisiteManager(visiteId: string) {
+// ─── Annulation visite (interne — par apporteur/manager/direction) ─────────────
+
+export async function annulerVisite(visiteId: string) {
+  const admin = createAdminClient()
+
+  const { data: visite } = await admin
+    .from('visites')
+    .select('prospect_id, date_visite, heure_visite, apporteur_id, annulation_token')
+    .eq('id', visiteId)
+    .single()
+
+  const { error } = await admin
+    .from('visites')
+    .update({ statut: 'annulee' })
+    .eq('id', visiteId)
+
+  if (error) return { success: false, error: error.message }
+
+  if (visite) {
+    // Remettre le prospect en statut 'valide'
+    await admin.from('prospects').update({ statut: 'valide' }).eq('id', visite.prospect_id)
+
+    // Invalider le token d'annulation
+    if (visite.annulation_token) {
+      await admin
+        .from('annulation_tokens')
+        .update({ used_at: new Date().toISOString() })
+        .eq('token', visite.annulation_token)
+    }
+
+    // Récupérer les infos pour les emails
+    const { data: prospect } = await admin
+      .from('prospects')
+      .select('nom, prenom, email')
+      .eq('id', visite.prospect_id)
+      .single()
+
+    const { data: apporteurProfile } = visite.apporteur_id
+      ? await admin.from('profiles').select('nom, prenom, email').eq('id', visite.apporteur_id).single()
+      : { data: null }
+
+    if (prospect) {
+      // Email interne (apporteur + managers)
+      const { data: managers } = await admin.from('profiles').select('email').eq('role', 'manager')
+      const internRecipients: string[] = []
+      if (apporteurProfile?.email) internRecipients.push(apporteurProfile.email)
+      for (const m of managers ?? []) internRecipients.push(m.email)
+
+      if (internRecipients.length > 0) {
+        const internEmail = buildEmailAnnulationVisiteIntern({
+          prospect: { nom: prospect.nom, prenom: prospect.prenom, id: visite.prospect_id },
+          date_visite: visite.date_visite,
+        })
+        await sendEmail({ to: internRecipients, ...internEmail })
+      }
+
+      // Email client
+      if (prospect.email) {
+        const clientEmail = buildEmailAnnulationVisiteClient({
+          prospect: { nom: prospect.nom, prenom: prospect.prenom },
+          date_visite: visite.date_visite,
+        })
+        await sendEmail({ to: prospect.email, ...clientEmail })
+      }
+    }
+  }
+
+  return { success: true }
+}
+
+// ─── Annulation visite publique (via token UUID) ───────────────────────────────
+
+export async function annulerVisiteParToken(token: string) {
+  const admin = createAdminClient()
+
+  // Vérifier le token
+  const { data: tokenRow } = await admin
+    .from('annulation_tokens')
+    .select('*')
+    .eq('token', token)
+    .eq('type', 'visite')
+    .single()
+
+  if (!tokenRow) return { success: false, error: 'Lien invalide ou expiré' }
+  if (tokenRow.used_at) return { success: false, error: 'Ce lien a déjà été utilisé' }
+  if (new Date(tokenRow.expires_at) < new Date()) return { success: false, error: 'Lien expiré' }
+
+  // Trouver la visite associée
+  const { data: visite } = await admin
+    .from('visites')
+    .select('id, prospect_id, date_visite, heure_visite, apporteur_id')
+    .eq('annulation_token', token)
+    .neq('statut', 'annulee')
+    .single()
+
+  if (!visite) return { success: false, error: 'Aucune visite active trouvée' }
+
+  // Annuler la visite
+  await admin.from('visites').update({ statut: 'annulee' }).eq('id', visite.id)
+  await admin.from('prospects').update({ statut: 'valide' }).eq('id', visite.prospect_id)
+  await admin.from('annulation_tokens').update({ used_at: new Date().toISOString() }).eq('token', token)
+
+  // Notifier en interne
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('nom, prenom, email')
+    .eq('id', visite.prospect_id)
+    .single()
+
+  if (prospect) {
+    const { data: managers } = await admin.from('profiles').select('email').eq('role', 'manager')
+    const { data: apporteurProfile } = visite.apporteur_id
+      ? await admin.from('profiles').select('email').eq('id', visite.apporteur_id).single()
+      : { data: null }
+
+    const internRecipients: string[] = []
+    if (apporteurProfile?.email) internRecipients.push(apporteurProfile.email)
+    for (const m of managers ?? []) internRecipients.push(m.email)
+
+    if (internRecipients.length > 0) {
+      const internEmail = buildEmailAnnulationVisiteIntern({
+        prospect: { nom: prospect.nom, prenom: prospect.prenom, id: visite.prospect_id },
+        date_visite: visite.date_visite,
+      })
+      await sendEmail({ to: internRecipients, ...internEmail })
+    }
+  }
+
+  return { success: true }
+}
+
+// ─── Check-in sécurité ─────────────────────────────────────────────────────────
+
+export async function validerArriveeClient(visiteId: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Non authentifié' }
@@ -60,9 +258,8 @@ export async function confirmerVisiteManager(visiteId: string) {
   const { error } = await admin
     .from('visites')
     .update({
-      statut: 'confirmee_manager',
-      confirmed_by: user.id,
-      confirmed_manager_at: new Date().toISOString(),
+      arrivee_validee: true,
+      arrivee_validee_at: new Date().toISOString(),
     })
     .eq('id', visiteId)
 
@@ -70,7 +267,7 @@ export async function confirmerVisiteManager(visiteId: string) {
   return { success: true }
 }
 
-export async function confirmerVisiteSecurite(visiteId: string, notes_securite?: string) {
+export async function validerPresenceManager(visiteId: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Non authentifié' }
@@ -79,10 +276,8 @@ export async function confirmerVisiteSecurite(visiteId: string, notes_securite?:
   const { error } = await admin
     .from('visites')
     .update({
-      statut: 'confirmee_securite',
-      confirmed_securite_by: user.id,
-      confirmed_securite_at: new Date().toISOString(),
-      notes_securite: notes_securite ?? null,
+      presence_manager: true,
+      presence_manager_validee_at: new Date().toISOString(),
     })
     .eq('id', visiteId)
 
@@ -113,29 +308,6 @@ export async function marquerVisiteRealisee(visiteId: string) {
   return { success: true }
 }
 
-export async function annulerVisite(visiteId: string) {
-  const admin = createAdminClient()
-
-  const { data: visite } = await admin
-    .from('visites')
-    .select('prospect_id')
-    .eq('id', visiteId)
-    .single()
-
-  const { error } = await admin
-    .from('visites')
-    .update({ statut: 'annulee' })
-    .eq('id', visiteId)
-
-  if (error) return { success: false, error: error.message }
-
-  if (visite) {
-    await admin.from('prospects').update({ statut: 'valide' }).eq('id', visite.prospect_id)
-  }
-
-  return { success: true }
-}
-
 export async function getJoursDisponibles() {
   const admin = createAdminClient()
 
@@ -148,7 +320,7 @@ export async function getJoursDisponibles() {
 
   if (!jours) return []
 
-  // Count visites per jour
+  // Compter les visites par jour
   const { data: counts } = await admin
     .from('visites')
     .select('jour_id')

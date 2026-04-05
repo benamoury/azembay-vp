@@ -10,7 +10,8 @@ import {
 } from '@/lib/utils'
 import type { Prospect, Vente } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { TrendingUp, Target, User } from 'lucide-react'
+import { TrendingUp, Target, User, Phone, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 interface MesProspectsClientProps {
   prospects: Prospect[]
@@ -78,31 +79,41 @@ export function MesProspectsClient({ prospects, ventes }: MesProspectsClientProp
       {/* Liste */}
       <div className="space-y-2">
         {prospects.map(p => (
-          <Card key={p.id}>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-[#1A3C6E]/10 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-[#1A3C6E]" />
+          <Link key={p.id} href={`/mes-prospects/${p.id}`}>
+            <Card className="hover:border-[#1A3C6E]/30 hover:shadow-sm transition-all cursor-pointer">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-[#1A3C6E]/10 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-[#1A3C6E]" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{p.prenom} {p.nom}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {p.telephone && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />{p.telephone}
+                          </span>
+                        )}
+                        {p.budget_estime && (
+                          <span className="text-xs text-[#C8973A]">{formatCurrency(p.budget_estime)}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">{p.prenom} {p.nom}</p>
-                    <p className="text-xs text-gray-400">
-                      {p.email}
-                      {p.budget_estime && ` · ${formatCurrency(p.budget_estime)}`}
-                      {` · ${formatDate(p.created_at)}`}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', PROSPECT_STATUT_COLORS[p.statut])}>
+                      {PROSPECT_STATUT_LABELS[p.statut]}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
                   </div>
                 </div>
-                <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', PROSPECT_STATUT_COLORS[p.statut])}>
-                  {PROSPECT_STATUT_LABELS[p.statut]}
-                </span>
-              </div>
-              {p.statut === 'soumis' && (
-                <p className="text-xs text-orange-500 mt-2 ml-12">⏳ En attente de validation Manager</p>
-              )}
-            </CardContent>
-          </Card>
+                {p.statut === 'soumis' && (
+                  <p className="text-xs text-orange-500 mt-2 ml-12">⏳ En attente de validation Manager</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         ))}
         {prospects.length === 0 && (
           <Card>

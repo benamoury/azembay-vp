@@ -11,10 +11,14 @@ export default async function ParametragePage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'direction') redirect('/dashboard')
 
-  const [{ data: utilisateurs }, { data: lots }, { data: documents }] = await Promise.all([
+  const admin = (await import('@/lib/supabase/server')).createAdminClient()
+
+  const [{ data: utilisateurs }, { data: lots }, { data: documents }, { data: jours }, { data: weekends }] = await Promise.all([
     supabase.from('profiles').select('*').order('nom'),
     supabase.from('lots').select('*').order('reference'),
     supabase.from('documents').select('*').order('created_at', { ascending: false }),
+    admin.from('jours_disponibles').select('*').order('date'),
+    admin.from('weekends_actives').select('*').order('date_vendredi'),
   ])
 
   return (
@@ -23,6 +27,8 @@ export default async function ParametragePage() {
         utilisateurs={utilisateurs || []}
         lots={lots || []}
         documents={documents || []}
+        jours={jours || []}
+        weekends={weekends || []}
       />
     </AppLayout>
   )

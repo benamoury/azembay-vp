@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   // Apporteur
   { label: 'Mes prospects', href: '/mes-prospects', icon: Users, roles: ['apporteur'] },
   { label: 'Soumettre un prospect', href: '/soumettre', icon: PlusCircle, roles: ['apporteur'] },
-  { label: 'Calendrier visites', href: '/calendrier', icon: Calendar, roles: ['apporteur'] },
+  // { label: 'Calendrier visites', href: '/calendrier', icon: Calendar, roles: ['apporteur'] }, // SUSPENDED V1
   // Securite
   { label: 'Guest List du jour', href: '/guest-list', icon: Shield, roles: ['securite'] },
 ]

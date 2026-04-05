@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import type { ProspectStatut, LotType, LotStatut, VoucherStatut } from './types'
+import type { ProspectStatut, LotType, LotStatut, VoucherStatut, SejourStatut, WeekendStatut } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -36,6 +36,7 @@ export function formatDateTime(date: string | Date): string {
 
 export const PROSPECT_STATUT_LABELS: Record<ProspectStatut, string> = {
   soumis: 'Soumis',
+  qualifie: 'Qualifié',
   valide: 'Validé',
   visite_programmee: 'Visite programmée',
   visite_realisee: 'Visite réalisée',
@@ -49,6 +50,7 @@ export const PROSPECT_STATUT_LABELS: Record<ProspectStatut, string> = {
 
 export const PROSPECT_STATUT_COLORS: Record<ProspectStatut, string> = {
   soumis: 'bg-gray-100 text-gray-700 border-gray-200',
+  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
   valide: 'bg-green-100 text-green-700 border-green-200',
   visite_programmee: 'bg-blue-100 text-blue-700 border-blue-200',
   visite_realisee: 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -107,4 +109,56 @@ export const ROLE_LABELS: Record<string, string> = {
   manager: 'Manager',
   apporteur: 'Apporteur',
   securite: 'Sécurité',
+}
+
+export const SEJOUR_STATUT_LABELS: Record<SejourStatut, string> = {
+  demande: 'Demandé',
+  confirme: 'Confirmé',
+  realise: 'Réalisé',
+  no_show: 'No-show',
+  annule: 'Annulé',
+}
+
+export const SEJOUR_STATUT_COLORS: Record<SejourStatut, string> = {
+  demande: 'bg-yellow-100 text-yellow-700',
+  confirme: 'bg-green-100 text-green-700',
+  realise: 'bg-blue-100 text-blue-700',
+  no_show: 'bg-red-100 text-red-700',
+  annule: 'bg-gray-100 text-gray-500',
+}
+
+export const WEEKEND_STATUT_LABELS: Record<WeekendStatut, string> = {
+  ouvert: 'Ouvert',
+  valide: 'Validé',
+  complet: 'Complet',
+  passe: 'Passé',
+}
+
+export const WEEKEND_STATUT_COLORS: Record<WeekendStatut, string> = {
+  ouvert: 'bg-green-100 text-green-700',
+  valide: 'bg-blue-100 text-blue-700',
+  complet: 'bg-orange-100 text-orange-700',
+  passe: 'bg-gray-100 text-gray-400',
+}
+
+export const TEMPERATURE_LABELS: Record<number, string> = {
+  1: 'Froid',
+  2: 'Tiède',
+  3: 'Neutre',
+  4: 'Chaud',
+  5: 'Brûlant',
+}
+
+export const TEMPERATURE_COLORS: Record<number, string> = {
+  1: 'text-blue-400',
+  2: 'text-blue-600',
+  3: 'text-gray-500',
+  4: 'text-orange-500',
+  5: 'text-red-500',
+}
+
+export const LOT_TYPE_PRIORITY: Record<string, number> = {
+  villa_e: 3,
+  appart_2ch: 2,
+  appart_1ch: 1,
 }

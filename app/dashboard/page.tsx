@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { AppLayout } from '@/components/layout/app-layout'
 import { DirectionDashboard } from '@/components/dashboard/direction-dashboard'
 import { ManagerDashboard } from '@/components/dashboard/manager-dashboard'
@@ -23,69 +23,83 @@ export default async function DashboardPage() {
 
   if (role === 'securite') redirect('/guest-list')
 
-  // Fetch data based on role
-  let lots: unknown[] = []
-  let prospects: unknown[] = []
-  let ventes: unknown[] = []
-  let vouchers: unknown[] = []
-  let liens: unknown[] = []
-
-  const { data: lotsData } = await supabase.from('lots').select('*').order('reference')
-  lots = lotsData || []
+  const admin = createAdminClient()
 
   if (role === 'direction') {
-    const [p, v] = await Promise.all([
-      supabase.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role), lot_cible:lots(*)').order('created_at', { ascending: false }),
-      supabase.from('ventes').select('*, prospect:prospects(nom,prenom), lot:lots(reference)').order('created_at', { ascending: false }),
+    const [{ data: lots }, { data: prospects }, { data: ventes }, { data: sejours }, { data: factures }] = await Promise.all([
+      admin.from('lots').select('*').order('reference'),
+      admin.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role), lot_cible:lots(*)').order('created_at', { ascending: false }),
+      admin.from('ventes').select('*, prospect:prospects(nom,prenom), lot:lots(reference)').order('created_at', { ascending: false }),
+      admin.from('sejours').select('*, prospect:prospects(nom,prenom,apporteur_id)').order('created_at', { ascending: false }),
+      admin.from('factures').select('montant_ttc,statut'),
     ])
-    prospects = p.data || []
-    ventes = v.data || []
+
+    return (
+      <AppLayout role={role} nom={profile.nom} prenom={profile.prenom}>
+        <DirectionDashboard
+          lots={lots || []}
+          prospects={prospects || []}
+          ventes={ventes || []}
+          sejours={sejours || []}
+          factures={factures || []}
+        />
+      </AppLayout>
+    )
   }
 
   if (role === 'manager') {
-    const [p, vo, l] = await Promise.all([
-      supabase.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role)').order('created_at', { ascending: false }),
-      supabase.from('vouchers').select('*, prospect:prospects(nom,prenom,email)').order('created_at', { ascending: false }),
-      supabase.from('liens_securises').select('*, prospect:prospects(nom,prenom), document:documents(nom)').order('created_at', { ascending: false }),
+    const today = new Date().toISOString().split('T')[0]
+    const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+
+    const [{ data: prospects }, { data: visitesAujourdhui }, { data: liens }, { data: sejours }, { data: nonQualifies }] = await Promise.all([
+      admin.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role)').order('created_at', { ascending: false }),
+      admin.from('visites').select('*, prospect:prospects(nom,prenom,email,telephone)').eq('date_visite', today).neq('statut', 'annulee').order('heure_visite'),
+      admin.from('liens_securises').select('*, prospect:prospects(nom,prenom), document:documents(nom)').order('created_at', { ascending: false }),
+      admin.from('sejours').select('*, prospect:prospects(nom,prenom)').in('statut', ['demande', 'confirme', 'no_show']).order('created_at', { ascending: false }),
+      admin.from('prospects').select('id,nom,prenom,created_at').eq('statut', 'soumis').lt('created_at', cutoff48h),
     ])
-    prospects = p.data || []
-    vouchers = vo.data || []
-    liens = l.data || []
+
+    return (
+      <AppLayout role={role} nom={profile.nom} prenom={profile.prenom}>
+        <ManagerDashboard
+          prospects={prospects || []}
+          visitesAujourdhui={visitesAujourdhui || []}
+          liens={liens || []}
+          sejours={sejours || []}
+          nonQualifies={nonQualifies || []}
+        />
+      </AppLayout>
+    )
   }
 
-  if (role === 'apporteur') {
-    const [p, v] = await Promise.all([
-      supabase.from('prospects').select('*, lot_cible:lots(*)').eq('apporteur_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('ventes').select('*').eq('apporteur_id', user.id),
-    ])
-    prospects = p.data || []
-    ventes = v.data || []
-  }
+  // Apporteur
+  const [{ data: prospects }, { data: ventes }, { data: sejours }, { data: visites }, { data: apporteurProfile }, { data: lots }] = await Promise.all([
+    supabase.from('prospects').select('*, lot_cible:lots(*)').eq('apporteur_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('ventes').select('*').eq('apporteur_id', user.id),
+    admin.from('sejours')
+      .select('id,statut,date_arrivee,date_depart,prospect:prospects!inner(apporteur_id)')
+      .eq('prospects.apporteur_id', user.id)
+      .not('statut', 'eq', 'annule'),
+    admin.from('visites')
+      .select('id,statut,date_visite,prospect:prospects!inner(apporteur_id)')
+      .eq('prospects.apporteur_id', user.id),
+    admin.from('profiles').select('quota_sejours_utilise,quota_sejours_max').eq('id', user.id).single(),
+    admin.from('lots').select('id,reference,type,prix_individuel,prix_bloc,statut').eq('statut', 'disponible').order('reference'),
+  ])
 
   return (
     <AppLayout role={role} nom={profile.nom} prenom={profile.prenom}>
-      {role === 'direction' && (
-        <DirectionDashboard
-          lots={lots as never}
-          prospects={prospects as never}
-          ventes={ventes as never}
-        />
-      )}
-      {role === 'manager' && (
-        <ManagerDashboard
-          prospects={prospects as never}
-          vouchers={vouchers as never}
-          liens={liens as never}
-        />
-      )}
-      {role === 'apporteur' && (
-        <ApporteurDashboard
-          prospects={prospects as never}
-          ventes={ventes as never}
-          nom={profile.nom}
-          prenom={profile.prenom}
-        />
-      )}
+      <ApporteurDashboard
+        prospects={prospects || []}
+        ventes={ventes || []}
+        sejours={sejours || []}
+        visites={visites || []}
+        lotsDisponibles={lots || []}
+        quotaUsed={apporteurProfile?.quota_sejours_utilise ?? 0}
+        quotaMax={apporteurProfile?.quota_sejours_max ?? 6}
+        nom={profile.nom}
+        prenom={profile.prenom}
+      />
     </AppLayout>
   )
 }
