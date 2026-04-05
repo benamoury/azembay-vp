@@ -1,6 +1,11 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialization — évite l'erreur "Missing API key" au build
+let _resend: Resend | null = null
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY)
+  return _resend
+}
 
 // ✅ FROM corrigé — domaine earth.ma vérifié dans Resend
 const FROM = 'AZEMBAY <noreply@earth.ma>'
@@ -51,7 +56,7 @@ export async function sendEmail({
   attachments?: { filename: string; content: Buffer }[]
 }) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: FROM,
       to: Array.isArray(to) ? to : [to],
       subject,
