@@ -396,6 +396,25 @@ export async function creerUtilisateur(data: {
   return { success: true }
 }
 
+export async function modifierUtilisateur(userId: string, data: {
+  nom: string
+  prenom: string
+  telephone?: string
+  role: 'direction' | 'manager' | 'apporteur' | 'securite'
+}) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('profiles').update(data).eq('id', userId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function supprimerUtilisateur(userId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function modifierStatutLot(lotId: string, statut: 'disponible' | 'bloque' | 'vendu') {
   const admin = createAdminClient()
   const { error } = await admin.from('lots').update({ statut }).eq('id', lotId)

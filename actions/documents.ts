@@ -62,3 +62,15 @@ export async function toggleDocumentActif(documentId: string, actif: boolean) {
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
+
+export async function supprimerDocument(documentId: string) {
+  const admin = createAdminClient()
+  // Get file_path first to delete from storage
+  const { data: doc } = await admin.from('documents').select('file_path').eq('id', documentId).single()
+  if (doc?.file_path) {
+    await admin.storage.from('documents').remove([doc.file_path])
+  }
+  const { error } = await admin.from('documents').delete().eq('id', documentId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}

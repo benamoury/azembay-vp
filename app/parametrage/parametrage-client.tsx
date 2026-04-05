@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency, ROLE_LABELS, LOT_TYPE_LABELS } from '@/lib/utils'
 import type { Profile, Lot, Document } from '@/lib/types'
 import { useToast } from '@/components/ui/use-toast'
-import { Users, Home, FileText, Plus, Calendar, Hotel, Trash2, Star, ToggleLeft, ToggleRight } from 'lucide-react'
-import { creerUtilisateur, modifierStatutLot, modifierPrixLot } from '@/actions/prospects'
+import { Users, Home, FileText, Plus, Calendar, Hotel, Trash2, Star, ToggleLeft, ToggleRight, Pencil, Check, X } from 'lucide-react'
+import { creerUtilisateur, modifierUtilisateur, supprimerUtilisateur, modifierStatutLot, modifierPrixLot } from '@/actions/prospects'
+import { toggleDocumentActif, supprimerDocument } from '@/actions/documents'
 import { creerJourDisponible, supprimerJourDisponible, toggleJourActif, creerWeekend, supprimerWeekend } from '@/actions/planning'
 import { cn } from '@/lib/utils'
 
@@ -59,9 +60,12 @@ const WEEKEND_STATUT_LABELS: Record<string, string> = {
 export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, documents, jours: initJours, weekends: initWeekends }: ParametrageClientProps) {
   const [utilisateurs, setUtilisateurs] = useState(initUsers)
   const [lots, setLots] = useState(initLots)
+  const [docs, setDocs] = useState(documents)
   const [jours, setJours] = useState(initJours)
   const [weekends, setWeekends] = useState(initWeekends)
   const [newUser, setNewUser] = useState({ email: '', prenom: '', nom: '', telephone: '', role: 'apporteur' as const })
+  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [userEdits, setUserEdits] = useState<{ prenom: string; nom: string; telephone: string; role: string }>({ prenom: '', nom: '', telephone: '', role: '' })
   const [editingLot, setEditingLot] = useState<string | null>(null)
   const [lotPrix, setLotPrix] = useState<{ prix_individuel: string; prix_bloc: string }>({ prix_individuel: '', prix_bloc: '' })
   const [newJour, setNewJour] = useState({ date: '', capacite: 3, prioritaire: false, actif: true })
@@ -94,6 +98,58 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
     setLoading(false)
+  }
+
+  function startEditUser(u: Profile) {
+    setEditingUser(u.id)
+    setUserEdits({ prenom: u.prenom, nom: u.nom, telephone: u.telephone ?? '', role: u.role })
+  }
+
+  async function handleSaveUser(userId: string) {
+    const result = await modifierUtilisateur(userId, {
+      nom: userEdits.nom,
+      prenom: userEdits.prenom,
+      telephone: userEdits.telephone || undefined,
+      role: userEdits.role as never,
+    })
+    if (result.success) {
+      setUtilisateurs(prev => prev.map(u => u.id === userId ? { ...u, ...userEdits, role: userEdits.role as never } : u))
+      setEditingUser(null)
+      toast({ title: 'Utilisateur mis à jour' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  async function handleSupprimerUser(userId: string) {
+    if (!confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return
+    const result = await supprimerUtilisateur(userId)
+    if (result.success) {
+      setUtilisateurs(prev => prev.filter(u => u.id !== userId))
+      toast({ title: 'Utilisateur supprimé' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  async function handleToggleDocument(docId: string, actif: boolean) {
+    const result = await toggleDocumentActif(docId, !actif)
+    if (result.success) {
+      setDocs(prev => prev.map(d => d.id === docId ? { ...d, actif: !actif } : d))
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  async function handleSupprimerDocument(docId: string) {
+    if (!confirm('Supprimer ce document ? Cette action est irréversible.')) return
+    const result = await supprimerDocument(docId)
+    if (result.success) {
+      setDocs(prev => prev.filter(d => d.id !== docId))
+      toast({ title: 'Document supprimé' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
   }
 
   async function handleLotStatut(lotId: string, statut: string) {
@@ -274,14 +330,60 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
             <CardContent>
               <div className="space-y-2">
                 {utilisateurs.map(u => (
-                  <div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium">{u.prenom} {u.nom}</p>
-                      <p className="text-xs text-gray-400">{u.email}{u.telephone ? ` · ${u.telephone}` : ''}</p>
-                    </div>
-                    <Badge variant={u.role === 'direction' ? 'default' : u.role === 'manager' ? 'green' : u.role === 'apporteur' ? 'orange' : 'gray'}>
-                      {ROLE_LABELS[u.role]}
-                    </Badge>
+                  <div key={u.id} className="py-2 border-b border-gray-50 last:border-0">
+                    {editingUser === u.id ? (
+                      <div className="grid grid-cols-4 gap-2 items-end">
+                        <div>
+                          <Label className="text-xs">Prénom</Label>
+                          <Input value={userEdits.prenom} onChange={e => setUserEdits(p => ({ ...p, prenom: e.target.value }))} className="h-8 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Nom</Label>
+                          <Input value={userEdits.nom} onChange={e => setUserEdits(p => ({ ...p, nom: e.target.value }))} className="h-8 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Téléphone</Label>
+                          <Input value={userEdits.telephone} onChange={e => setUserEdits(p => ({ ...p, telephone: e.target.value }))} className="h-8 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Rôle</Label>
+                          <Select value={userEdits.role} onValueChange={v => setUserEdits(p => ({ ...p, role: v }))}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                                <SelectItem key={k} value={k}>{v}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-4 flex gap-2 mt-1">
+                          <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveUser(u.id)}>
+                            <Check className="w-3 h-3 mr-1" /> Enregistrer
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingUser(null)}>
+                            <X className="w-3 h-3 mr-1" /> Annuler
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{u.prenom} {u.nom}</p>
+                          <p className="text-xs text-gray-400">{u.email}{u.telephone ? ` · ${u.telephone}` : ''}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={u.role === 'direction' ? 'default' : u.role === 'manager' ? 'green' : u.role === 'apporteur' ? 'orange' : 'gray'}>
+                            {ROLE_LABELS[u.role]}
+                          </Badge>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-[#1A3C6E]" onClick={() => startEditUser(u)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-600" onClick={() => handleSupprimerUser(u.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -506,21 +608,29 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
         {/* Documents */}
         <TabsContent value="documents" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-[#1A3C6E]">Documents ({documents.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-[#1A3C6E]">Documents ({docs.length})</CardTitle></CardHeader>
             <CardContent>
-              {documents.length === 0 ? (
+              {docs.length === 0 ? (
                 <p className="text-sm text-gray-400">Aucun document — uploadez des documents depuis la page Documents.</p>
               ) : (
                 <div className="space-y-2">
-                  {documents.map(d => (
+                  {docs.map(d => (
                     <div key={d.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                       <div>
                         <p className="text-sm font-medium">{d.nom}</p>
                         <p className="text-xs text-gray-400">{d.categorie.replace(/_/g, ' ')}</p>
                       </div>
-                      <Badge variant={d.actif ? 'green' : 'gray'}>
-                        {d.actif ? 'Actif' : 'Inactif'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={d.actif ? 'green' : 'gray'}>
+                          {d.actif ? 'Actif' : 'Inactif'}
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={() => handleToggleDocument(d.id, d.actif)} title={d.actif ? 'Désactiver' : 'Activer'}>
+                          {d.actif ? <ToggleRight className="w-4 h-4 text-green-600" /> : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerDocument(d.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
