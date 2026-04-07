@@ -283,7 +283,7 @@ export async function confirmerSejour(sejourId: string, data: {
 
   // E7 — Email de confirmation séjour → client + apporteur
   const lien_annulation = tokenRow?.token
-    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay-vp.vercel.app'}/annuler/${tokenRow.token}`
+    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'}/annuler/${tokenRow.token}`
     : ''
 
   if (prospect) {

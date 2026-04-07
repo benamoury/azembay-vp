@@ -9,7 +9,7 @@ function getResend() {
 
 // ✅ FROM corrigé — domaine earth.ma vérifié dans Resend
 const FROM = 'AZEMBAY <noreply@earth.ma>'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://azembay-vp.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'
 
 // ─── Layout commun ────────────────────────────────────────────────────────────
 

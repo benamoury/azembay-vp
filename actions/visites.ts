@@ -90,7 +90,7 @@ export async function demanderVisite(data: {
   const apRaw = prospect.apporteur
   const ap = (Array.isArray(apRaw) ? apRaw[0] : apRaw) as { nom: string; prenom: string; email: string; telephone?: string } | null | undefined
   const lien_annulation = annulation_token
-    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay-vp.vercel.app'}/annuler/${annulation_token}`
+    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'}/annuler/${annulation_token}`
     : ''
 
   if (prospect.email && ap) {
