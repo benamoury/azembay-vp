@@ -63,7 +63,7 @@ export function Sidebar({ role, nom, prenom }: SidebarProps) {
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Image
-            src="/earth-residences-logo.jpg"
+            src="/earth-residences-logo.png"
             alt="Earth Résidences"
             width={80}
             height={32}
