@@ -93,16 +93,20 @@ export async function demanderVisite(data: {
     ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'}/annuler/${annulation_token}`
     : ''
 
-  if (prospect.email && ap) {
+  // Email au prospect (toujours, même sans apporteur)
+  if (prospect.email) {
     const emailData = buildEmailConfirmationVisite({
       prospect: { nom: prospect.nom, prenom: prospect.prenom },
       date_visite: data.date_visite,
-      apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
+      apporteur: ap
+        ? { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone }
+        : { nom: 'Equipe', prenom: 'Azembay', telephone: undefined },
       lien_annulation,
     })
     await sendEmail({ to: prospect.email, ...emailData })
   }
 
+  // Email a l'apporteur (si existe)
   if (ap?.email) {
     const emailData = buildEmailConfirmationVisite({
       prospect: { nom: prospect.nom, prenom: prospect.prenom },
