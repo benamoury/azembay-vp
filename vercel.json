@@ -1,4 +1,4 @@
-﻿{
+{
   "framework": "nextjs",
   "regions": ["cdg1"],
   "buildCommand": "next build",
