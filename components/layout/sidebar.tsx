@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn, ROLE_LABELS } from '@/lib/utils'
 import type { UserRole } from '@/lib/types'
@@ -61,9 +62,13 @@ export function Sidebar({ role, nom, prenom }: SidebarProps) {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#C8973A] rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-base">A</span>
-          </div>
+          <Image
+            src="/earth-residences-logo.jpg"
+            alt="Earth Résidences"
+            width={80}
+            height={32}
+            className="object-contain brightness-0 invert flex-shrink-0"
+          />
           <div>
             <div className="text-white font-bold text-sm tracking-wider">AZEMBAY</div>
             <div className="text-white/40 text-[10px] tracking-wide">RIPT 1 — Off-Market</div>
