@@ -44,7 +44,8 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
       apporteur_id: apporteurId,
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
       reference_personnelle: form.reference_personnelle,
-      notes: [form.source_contact ? `Source contact: ${form.source_contact}` : '', form.notes].filter(Boolean).join(' — ') || undefined,
+      notes: [form.source_contact ? `Source: ${form.source_contact}` : '', form.notes].filter(Boolean).join(' | ') || undefined,
+      valeur_ajoutee: form.valeur_ajoutee || undefined,
       lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
     }
 
