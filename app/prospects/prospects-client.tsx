@@ -95,14 +95,26 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
             className="pl-9"
           />
         </div>
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <button onClick={() => setFilterStatut('tous')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${filterStatut === 'tous' ? 'bg-white shadow text-[#1A3C6E]' : 'text-gray-500 hover:text-gray-700'}`}>
+            Actifs
+          </button>
+          <button onClick={() => setFilterStatut('orange')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${filterStatut === 'orange' ? 'bg-white shadow text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}>
+            🟠 Orange
+          </button>
+          <button onClick={() => setFilterStatut('liste_attente')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${filterStatut === 'liste_attente' ? 'bg-white shadow text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+            📅 Attente
+          </button>
+          <button onClick={() => setFilterStatut('non_concluant')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${filterStatut === 'non_concluant' ? 'bg-white shadow text-red-600' : 'text-gray-500 hover:text-gray-700'}`}>
+            ❌ Closés
+          </button>
+        </div>
         <Select value={filterStatut} onValueChange={setFilterStatut}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Tous les statuts" />
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filtrer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="tous">Tous les statuts</SelectItem>
-              <SelectItem value="orange">🟠 Orange (en attente)</SelectItem>
-              <SelectItem value="liste_attente">📅 Liste d'attente</SelectItem>
+            <SelectItem value="tous">Tous</SelectItem>
             {Object.entries(PROSPECT_STATUT_LABELS).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
             ))}

@@ -22,9 +22,25 @@ const OBJECTIF = 3
 const COMMISSION_RATE = 0.02
 
 export function MesProspectsClient({ prospects, ventes }: MesProspectsClientProps) {
+  const [onglet, setOnglet] = useState<'actifs' | 'liste_attente' | 'closes'>('actifs')
+
   const ventesAcquises = ventes.filter(v => v.statut === 'acte_signe')
   const commissionAcquise = ventesAcquises.reduce((s, v) => s + (v.commission_apporteur || v.prix_notarie * COMMISSION_RATE), 0)
   const commissionEstimee = ventes.filter(v => v.statut === 'en_cours').reduce((s, v) => s + v.prix_notarie * COMMISSION_RATE, 0)
+
+  const STATUTS_FERMES = ['non_concluant']
+  const STATUTS_ATTENTE = ['liste_attente']
+  const STATUTS_ACTIFS = Object.keys(PROSPECT_STATUT_LABELS).filter(
+    s => !STATUTS_FERMES.includes(s) && !STATUTS_ATTENTE.includes(s)
+  )
+
+  const prospectsActifs = prospects.filter(p => STATUTS_ACTIFS.includes(p.statut))
+  const prospectsAttente = prospects.filter(p => STATUTS_ATTENTE.includes(p.statut))
+  const prospectsCloses = prospects.filter(p => STATUTS_FERMES.includes(p.statut))
+
+  const prospectsFiltres = onglet === 'actifs' ? prospectsActifs
+    : onglet === 'liste_attente' ? prospectsAttente
+    : prospectsCloses
 
   const byStatut = prospects.reduce((acc, p) => {
     acc[p.statut] = (acc[p.statut] || 0) + 1
@@ -76,9 +92,31 @@ export function MesProspectsClient({ prospects, ventes }: MesProspectsClientProp
         ))}
       </div>
 
+      {/* Onglets Actifs / Liste d'attente / Closés */}
+      <div className="flex gap-2 border-b border-gray-100 pb-0">
+        <button onClick={() => setOnglet('actifs')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${onglet === 'actifs' ? 'border-[#1A3C6E] text-[#1A3C6E]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          Actifs ({prospectsActifs.length})
+        </button>
+        <button onClick={() => setOnglet('liste_attente')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${onglet === 'liste_attente' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          📅 Liste d'attente ({prospectsAttente.length})
+        </button>
+        <button onClick={() => setOnglet('closes')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${onglet === 'closes' ? 'border-gray-500 text-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          ❌ Closés ({prospectsCloses.length})
+        </button>
+      </div>
+
+      {prospectsFiltres.length === 0 && (
+        <div className="text-center py-10 text-gray-400">
+          <p className="text-sm">Aucun prospect dans cette catégorie.</p>
+        </div>
+      )}
+
       {/* Liste */}
       <div className="space-y-2">
-        {prospects.map(p => (
+        {prospectsFiltres.map(p => (
           <Link key={p.id} href={`/mes-prospects/${p.id}`}>
             <Card className="hover:border-[#1A3C6E]/30 hover:shadow-sm transition-all cursor-pointer">
               <CardContent className="py-4">

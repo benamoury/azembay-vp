@@ -704,25 +704,14 @@ export function MonProspectDetailClient({
         </DialogContent>
       </Dialog>
 
-      {/* Actions Closer / Liste d'attente — disponibles pour tous statuts actifs */}
-      {!['non_concluant', 'vendu', 'liste_attente'].includes(prospect.statut) && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mt-4">
-          <h3 className="font-bold text-gray-700 text-base mb-2">Actions de qualification</h3>
-          <p className="text-sm text-gray-500 mb-4">Qualifiez la situation de ce prospect.</p>
-          <div className="flex flex-col gap-2 pt-1">
-            <button onClick={() => { setOrangeAction('reactiver'); setShowOrangeDialog(true) }}
-              className="w-full py-2 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
-              🔄 Réactiver — Prêt à signer maintenant
-            </button>
-            <button onClick={() => { setOrangeAction('liste_attente'); setShowOrangeDialog(true) }}
-              className="w-full py-2 px-4 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
-              📅 Liste d'attente — Intéressé mais plus tard
-            </button>
-            <button onClick={() => { setOrangeAction('closer'); setShowOrangeDialog(true) }}
-              className="w-full py-2 px-4 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600">
-              ❌ Closer — Non intéressé
-            </button>
-          </div>
+      {/* Réactivation si orange */}
+      {prospect.statut === 'orange' && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mt-4">
+          <p className="text-sm text-orange-700 mb-3">🟠 Prospect en attente depuis J+7 sans formulaire.</p>
+          <button onClick={() => { setOrangeAction('reactiver'); setShowOrangeDialog(true) }}
+            className="w-full py-2 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+            🔄 Réactiver — Prêt à signer maintenant
+          </button>
         </div>
       )}
 

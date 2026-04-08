@@ -325,11 +325,23 @@ export function ProspectDetailClient({
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
               <h1 className="text-2xl font-bold text-[#1A3C6E]">{prospect.prenom} {prospect.nom}</h1>
-              <Button size="sm" variant="outline" onClick={() => setShowEditDialog(true)} className="text-[#1A3C6E] border-[#1A3C6E]">
-                ✏️ Modifier
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowEditDialog(true)} className="text-[#1A3C6E] border-[#1A3C6E]">
+                  ✏️ Modifier
+                </Button>
+                {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && prospect.statut !== 'liste_attente' && (
+                  <Button size="sm" variant="outline" onClick={() => setShowListeAttenteDialog(true)} className="text-purple-600 border-purple-200">
+                    📅 Liste d'attente
+                  </Button>
+                )}
+                {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && (
+                  <Button size="sm" variant="outline" onClick={handleNonConcluant} disabled={loading} className="text-red-600 border-red-200">
+                    ❌ Closer
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Dialog Modifier prospect */}
@@ -381,16 +393,7 @@ export function ProspectDetailClient({
           </div>
           <p className="text-sm text-gray-400 mt-0.5">Créé le {formatDate(prospect.created_at)}</p>
         </div>
-        {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && prospect.statut !== 'liste_attente' && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="text-purple-600 border-purple-200" onClick={() => setShowListeAttenteDialog(true)} disabled={loading}>
-              📅 Liste d'attente
-            </Button>
-            <Button variant="outline" size="sm" className="text-red-600 border-red-200" onClick={handleNonConcluant} disabled={loading}>
-              <XCircle className="w-4 h-4 mr-1" /> Closer
-            </Button>
-          </div>
-        )}
+
 
         {/* Dialog Liste d'attente */}
         <Dialog open={showListeAttenteDialog} onOpenChange={setShowListeAttenteDialog}>
