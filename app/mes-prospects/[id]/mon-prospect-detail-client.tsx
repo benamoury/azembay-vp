@@ -704,12 +704,12 @@ export function MonProspectDetailClient({
         </DialogContent>
       </Dialog>
 
-      {/* Section Orange — Qualification requise */}
-      {prospect.statut === 'orange' && (
+      {/* Actions Closer / Liste d'attente — disponibles pour tous statuts actifs */}
+      {!['non_concluant', 'vendu', 'liste_attente'].includes(prospect.statut) && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mt-4">
-          <h3 className="font-bold text-orange-800 text-base mb-2">🟠 Prospect en attente — Action requise</h3>
-          <p className="text-sm text-orange-700 mb-4">Ce prospect n'a pas signé de formulaire dans les 7 jours suivant son séjour. Vous devez qualifier sa situation.</p>
-          <div className="flex flex-col gap-2">
+          <h3 className="font-bold text-gray-700 text-base mb-2">Actions de qualification</h3>
+          <p className="text-sm text-gray-500 mb-4">Qualifiez la situation de ce prospect.</p>
+          <div className="flex flex-col gap-2 pt-1">
             <button onClick={() => { setOrangeAction('reactiver'); setShowOrangeDialog(true) }}
               className="w-full py-2 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
               🔄 Réactiver — Prêt à signer maintenant

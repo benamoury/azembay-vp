@@ -25,7 +25,7 @@ import {
 import Link from 'next/link'
 import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
-  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection, modifierProspect,
+  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection, modifierProspect, mettreEnListeAttente,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
@@ -99,6 +99,22 @@ export function ProspectDetailClient({
   }
   const [formulaires, setFormulaires] = useState(initialFormulaires)
   const [dateValidationFormulaire, setDateValidationFormulaire] = useState('')
+  const [showListeAttenteDialog, setShowListeAttenteDialog] = useState(false)
+  const [listeAttenteDelai, setListeAttenteDelai] = useState('')
+  const [listeAttenteNotes, setListeAttenteNotes] = useState('')
+
+  async function handleListeAttente() {
+    setLoading(true)
+    const res = await mettreEnListeAttente(prospect.id, { delai: listeAttenteDelai, notes: listeAttenteNotes })
+    if (res.success) {
+      setProspect(p => ({ ...p, statut: 'liste_attente' }))
+      setShowListeAttenteDialog(false)
+      toast({ title: "✓ Prospect mis en liste d'attente" })
+    } else {
+      toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
   const [vouchers] = useState(initialVouchers)
   const [notes, setNotes] = useState(initialNotes)
   const [loading, setLoading] = useState(false)
@@ -365,11 +381,37 @@ export function ProspectDetailClient({
           </div>
           <p className="text-sm text-gray-400 mt-0.5">Créé le {formatDate(prospect.created_at)}</p>
         </div>
-        {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && (
-          <Button variant="outline" size="sm" className="text-red-600 border-red-200" onClick={handleNonConcluant} disabled={loading}>
-            <XCircle className="w-4 h-4 mr-1" /> Non concluant
-          </Button>
+        {prospect.statut !== 'non_concluant' && prospect.statut !== 'vendu' && prospect.statut !== 'liste_attente' && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="text-purple-600 border-purple-200" onClick={() => setShowListeAttenteDialog(true)} disabled={loading}>
+              📅 Liste d'attente
+            </Button>
+            <Button variant="outline" size="sm" className="text-red-600 border-red-200" onClick={handleNonConcluant} disabled={loading}>
+              <XCircle className="w-4 h-4 mr-1" /> Closer
+            </Button>
+          </div>
         )}
+
+        {/* Dialog Liste d'attente */}
+        <Dialog open={showListeAttenteDialog} onOpenChange={setShowListeAttenteDialog}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>📅 Mise en liste d'attente</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Délai estimé de signature</Label>
+                <input type="date" value={listeAttenteDelai} onChange={e => setListeAttenteDelai(e.target.value)} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <textarea value={listeAttenteNotes} onChange={e => setListeAttenteNotes(e.target.value)} rows={3} className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" placeholder="Raison du délai..." />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowListeAttenteDialog(false)}>Annuler</Button>
+                <Button className="flex-1 bg-purple-600" onClick={handleListeAttente} disabled={loading || !listeAttenteDelai}>Confirmer</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* CRM Pipeline */}
