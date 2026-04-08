@@ -26,6 +26,8 @@ export async function soumettreProspect(data: {
   valeur_ajoutee?: string
   lot_cible_id?: string
   notes?: string
+  source?: 'public' | 'acquereur' | 'source_remuneree'
+  source_remuneree_id?: string
 }) {
   const supabase = createAdminClient()
 
@@ -271,6 +273,7 @@ export async function creerVoucher(data: {
 export async function creerFormulaire(data: {
   prospect_id: string
   lot_id: string
+  lot_ids?: string[]
   type: string
   programme_hotelier?: string
   date_signature?: string
@@ -297,7 +300,9 @@ export async function creerFormulaire(data: {
     .from('formulaires')
     .insert({
       ...data,
+      lot_ids: data.lot_ids || [data.lot_id],
       statut: 'signe',
+      statut_direction: 'en_attente_direction',
       date_retractation_expire: dateRetractation,
     })
     .select()
@@ -308,8 +313,11 @@ export async function creerFormulaire(data: {
   // Advance prospect
   await admin.from('prospects').update({ statut: 'formulaire_signe', lot_cible_id: data.lot_id }).eq('id', data.prospect_id)
 
-  // Block the lot
-  await admin.from('lots').update({ statut: 'bloque' }).eq('id', data.lot_id)
+  // Bloquer tous les lots concernés
+  const lotIds = data.lot_ids || [data.lot_id]
+  for (const lotId of lotIds) {
+    await admin.from('lots').update({ statut: 'bloque' }).eq('id', lotId)
+  }
 
   // Notify direction + manager
   const { data: managers } = await admin.from('profiles').select('email').in('role', ['direction', 'manager'])
@@ -460,3 +468,214 @@ export async function getLotsDuProspect(prospectId: string) {
   if (error) return []
   return data ?? []
 }
+
+
+// ─── Validation formulaire par Direction ──────────────────────────────────────
+
+export async function validerFormulaireDirection(formulaireId: string, dateValidation: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  const { data: formulaire, error } = await admin
+    .from('formulaires')
+    .update({
+      statut_direction: 'valide_direction',
+      valide_par_direction_at: dateValidation,
+      valide_par_direction_id: user.id,
+    })
+    .eq('id', formulaireId)
+    .select('*, prospect:prospects(nom,prenom), lot:lots(reference)')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, formulaire }
+}
+
+export async function rejeterFormulaireDirection(formulaireId: string) {
+  const admin = createAdminClient()
+
+  // Récupérer le formulaire pour débloquer les lots
+  const { data: formulaire } = await admin
+    .from('formulaires')
+    .select('lot_id, lot_ids, prospect_id')
+    .eq('id', formulaireId)
+    .single()
+
+  if (formulaire) {
+    // Débloquer tous les lots
+    const lotIds = formulaire.lot_ids || [formulaire.lot_id]
+    for (const lotId of lotIds) {
+      await admin.from('lots').update({ statut: 'disponible' }).eq('id', lotId)
+    }
+    // Remettre le prospect en dossier_envoye
+    await admin.from('prospects').update({ statut: 'dossier_envoye' }).eq('id', formulaire.prospect_id)
+  }
+
+  const { error } = await admin
+    .from('formulaires')
+    .update({ statut: 'expire', statut_direction: 'rejete_direction' })
+    .eq('id', formulaireId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+// ─── Sources rémunérées ────────────────────────────────────────────────────────
+
+export async function creerSourceRemuneree(data: { nom: string; description?: string }) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+  const { data: source, error } = await admin
+    .from('sources_remunerees')
+    .insert({ ...data, actif: true, created_by: user.id })
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, source }
+}
+
+export async function supprimerSourceRemuneree(id: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('sources_remunerees').update({ actif: false }).eq('id', id)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function getSourcesRemunerees() {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('sources_remunerees')
+    .select('*')
+    .eq('actif', true)
+    .order('nom')
+  return data || []
+}
+
+// ─── Gestion prospects orange (post J+7 sans formulaire) ──────────────────────
+
+export async function mettreEnListeAttente(prospectId: string, data: {
+  delai: string // date estimée de signature ex: "2026-10-01"
+  notes: string
+}) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('prospects')
+    .update({
+      statut: 'liste_attente',
+      liste_attente_delai: data.delai,
+      liste_attente_notes: data.notes,
+    })
+    .eq('id', prospectId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function closerProspect(prospectId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('prospects')
+    .update({ statut: 'non_concluant' })
+    .eq('id', prospectId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function reactiverProspect(prospectId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('prospects')
+    .update({ statut: 'sejour_realise' })
+    .eq('id', prospectId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+// ─── Acquéreurs ───────────────────────────────────────────────────────────────
+
+export async function creerAcquereur(data: { nom: string; prenom: string; email?: string; telephone?: string; description?: string }) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+  const admin = createAdminClient()
+  const { data: acquereur, error } = await admin
+    .from('acquereurs')
+    .insert({ ...data, actif: true, created_by: user.id })
+    .select().single()
+  if (error) return { success: false, error: error.message }
+  return { success: true, acquereur }
+}
+
+export async function supprimerAcquereur(id: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('acquereurs').update({ actif: false }).eq('id', id)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function getAcquereurs() {
+  const admin = createAdminClient()
+  const { data } = await admin.from('acquereurs').select('*').eq('actif', true).order('nom')
+  return data || []
+}
+
+// ─── Validation assignation par Direction ─────────────────────────────────────
+
+export async function validerAssignation(prospectId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  const { data: prospect, error } = await admin
+    .from('prospects')
+    .update({
+      assignation_validee: true,
+      assignation_validee_at: new Date().toISOString(),
+      assignation_validee_by: user.id,
+      statut: 'soumis',
+    })
+    .eq('id', prospectId)
+    .select('*, apporteur:profiles!apporteur_id(email, nom, prenom)')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  // Envoyer email d'assignation à l'apporteur
+  if (prospect?.apporteur) {
+    const ap = prospect.apporteur as { email: string; nom: string; prenom: string }
+    await sendEmail({
+      to: ap.email,
+      subject: `📋 Nouveau prospect assigné — ${prospect.prenom} ${prospect.nom}`,
+      html: `
+        <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#1A3C6E;padding:24px;text-align:center;">
+            <h1 style="color:#C8973A;margin:0;letter-spacing:2px;">AZEMBAY</h1>
+          </div>
+          <div style="padding:32px;background:#F8FAFC;">
+            <h2 style="color:#1A3C6E;">Bonjour ${ap.prenom},</h2>
+            <p>Un nouveau prospect vous a été assigné et validé par la Direction.</p>
+            <div style="background:white;padding:16px;border-radius:8px;border-left:4px solid #C8973A;margin:20px 0;">
+              <p><strong>Prospect :</strong> ${prospect.prenom} ${prospect.nom}</p>
+              <p><strong>Email :</strong> ${prospect.email}</p>
+              ${prospect.telephone ? `<p><strong>Téléphone :</strong> ${prospect.telephone}</p>` : ''}
+            </div>
+            <p>Connectez-vous sur <a href="https://azembay.vercel.app">azembay.vercel.app</a> pour consulter le dossier.</p>
+          </div>
+        </div>
+      `,
+    })
+  }
+
+  return { success: true }
+}
+
+// ─── Actions post-séjour (orange) ─────────────────────────────────────────────
+

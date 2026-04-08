@@ -26,8 +26,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Routes publiques — viewer sécurisé accessible sans auth
-  if (pathname.startsWith('/view/')) {
+  // Routes publiques — viewer sécurisé et annulation accessibles sans auth
+  if (pathname.startsWith('/view/') || pathname.startsWith('/annuler/')) {
     return supabaseResponse
   }
 

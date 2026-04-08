@@ -14,7 +14,7 @@ export default async function ValidationPage() {
   const { data: prospects } = await supabase
     .from('prospects')
     .select('*, apporteur:profiles!apporteur_id(id,nom,prenom,email,telephone), lot_cible:lots(*)')
-    .eq('statut', 'soumis')
+    .in('statut', ['qualifie', 'soumis'])
     .order('created_at', { ascending: false })
 
   return (

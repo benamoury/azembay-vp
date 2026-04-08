@@ -46,6 +46,8 @@ export const PROSPECT_STATUT_LABELS: Record<ProspectStatut, string> = {
   sejour_realise: 'Séjour réalisé',
   vendu: 'Vendu',
   non_concluant: 'Non concluant',
+  orange: 'En attente (Orange)',
+  liste_attente: "Liste d'attente",
 }
 
 export const PROSPECT_STATUT_COLORS: Record<ProspectStatut, string> = {
@@ -55,11 +57,13 @@ export const PROSPECT_STATUT_COLORS: Record<ProspectStatut, string> = {
   visite_programmee: 'bg-blue-100 text-blue-700 border-blue-200',
   visite_realisee: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   dossier_envoye: 'bg-purple-100 text-purple-700 border-purple-200',
-  formulaire_signe: 'bg-orange-100 text-orange-700 border-orange-200',
+  formulaire_signe: 'bg-teal-100 text-teal-700 border-teal-200',
   sejour_confirme: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  sejour_realise: 'bg-teal-100 text-teal-700 border-teal-200',
-  vendu: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  non_concluant: 'bg-red-100 text-red-600 border-red-200',
+  sejour_realise: 'bg-sky-100 text-sky-700 border-sky-200',
+  vendu: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  non_concluant: 'bg-red-100 text-red-700 border-red-200',
+  orange: 'bg-orange-100 text-orange-700 border-orange-200',
+  liste_attente: 'bg-slate-100 text-slate-700 border-slate-200',
 }
 
 export const LOT_TYPE_LABELS: Record<LotType, string> = {

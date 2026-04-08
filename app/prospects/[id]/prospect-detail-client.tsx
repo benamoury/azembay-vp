@@ -25,7 +25,7 @@ import {
 import Link from 'next/link'
 import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
-  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect,
+  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
@@ -68,6 +68,8 @@ export function ProspectDetailClient({
   role,
 }: Props) {
   const [prospect, setProspect] = useState(initialProspect)
+  const [formulaires, setFormulaires] = useState(initialFormulaires)
+  const [dateValidationFormulaire, setDateValidationFormulaire] = useState('')
   const [vouchers] = useState(initialVouchers)
   const [notes, setNotes] = useState(initialNotes)
   const [loading, setLoading] = useState(false)
@@ -79,7 +81,7 @@ export function ProspectDetailClient({
   const [noteTemp, setNoteTemp] = useState<number | undefined>(undefined)
   const [visiteData, setVisiteData] = useState({ jour_id: '', notes_apporteur: '' })
   const [voucherData, setVoucherData] = useState({ date_visite: '', heure_visite: '10:00' })
-  const [formulaireData, setFormulaireData] = useState({ lot_id: '', type: 'avec_acompte', programme_hotelier: 'standard', date_signature: '', sejour_test_souhaite: false })
+  const [formulaireData, setFormulaireData] = useState({ lot_id: '', lot_ids: [] as string[], type: 'avec_acompte', programme_hotelier: 'standard', date_signature: '', sejour_test_souhaite: false })
   const [sejourData, setSejourData] = useState({ date_arrivee: '', date_depart: '', nb_adultes: 2, nb_enfants: 0 })
   const { toast } = useToast()
   const router = useRouter()
@@ -169,10 +171,33 @@ export function ProspectDetailClient({
     setLoading(false)
   }
 
+  async function handleValiderFormulaire(formulaireId: string, date: string) {
+    setLoading(true)
+    const result = await validerFormulaireDirection(formulaireId, date)
+    if (result.success) {
+      toast({ title: '✓ Formulaire validé par la Direction' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  async function handleRejeterFormulaire(formulaireId: string) {
+    setLoading(true)
+    const result = await rejeterFormulaireDirection(formulaireId)
+    if (result.success) {
+      setProspect(p => ({ ...p, statut: 'dossier_envoye' }))
+      toast({ title: 'Formulaire annulé — Lots débloqués' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
   async function handleFormulaire(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const result = await creerFormulaire({ prospect_id: prospect.id, ...formulaireData })
+    const result = await creerFormulaire({ prospect_id: prospect.id, ...formulaireData, lot_ids: formulaireData.lot_ids.length > 0 ? formulaireData.lot_ids : [formulaireData.lot_id] })
     if (result.success) {
       setShowFormulaireDialog(false)
       setProspect(p => ({ ...p, statut: 'formulaire_signe' }))
@@ -190,6 +215,18 @@ export function ProspectDetailClient({
     if (result.success) {
       setShowSejourDialog(false)
       toast({ title: 'Séjour demandé' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  async function handleQualifier() {
+    setLoading(true)
+    const result = await qualifierProspect(prospect.id)
+    if (result.success) {
+      setProspect(p => ({ ...p, statut: 'qualifie' }))
+      toast({ title: 'Prospect qualifié', description: 'La Direction a été notifiée pour validation.' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -472,8 +509,8 @@ export function ProspectDetailClient({
             <CardHeader><CardTitle className="text-[#1A3C6E] text-sm">Actions CRM</CardTitle></CardHeader>
             <CardContent className="space-y-3">
 
-              {/* Étape 1 → Valider prospect soumis */}
-              {prospect.statut === 'soumis' && (
+              {/* Étape 1 → Manager qualifie / Direction valide */}
+              {prospect.statut === 'soumis' && role === 'direction' && (
                 <div className="space-y-2">
                   <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleValider} disabled={loading}>
                     <CheckCircle className="w-4 h-4 mr-2" /> Valider le prospect
@@ -482,6 +519,29 @@ export function ProspectDetailClient({
                     <XCircle className="w-4 h-4 mr-2" /> Rejeter
                   </Button>
                 </div>
+              )}
+              {prospect.statut === 'soumis' && (role === 'manager') && (
+                <div className="space-y-2">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleQualifier} disabled={loading}>
+                    <CheckCircle className="w-4 h-4 mr-2" /> Qualifier le prospect
+                  </Button>
+                  <Button variant="outline" className="w-full text-red-600 border-red-200" onClick={handleRejeter} disabled={loading}>
+                    <XCircle className="w-4 h-4 mr-2" /> Rejeter
+                  </Button>
+                </div>
+              )}
+              {prospect.statut === 'qualifie' && role === 'direction' && (
+                <div className="space-y-2">
+                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleValider} disabled={loading}>
+                    <CheckCircle className="w-4 h-4 mr-2" /> Approuver le prospect
+                  </Button>
+                  <Button variant="outline" className="w-full text-red-600 border-red-200" onClick={handleRejeter} disabled={loading}>
+                    <XCircle className="w-4 h-4 mr-2" /> Rejeter
+                  </Button>
+                </div>
+              )}
+              {prospect.statut === 'qualifie' && role === 'manager' && (
+                <p className="text-sm text-blue-600 text-center py-2">✓ Qualifié — En attente de validation Direction</p>
               )}
 
               {/* Étape 2 → Planifier visite */}
@@ -516,6 +576,30 @@ export function ProspectDetailClient({
                   <FileText className="w-4 h-4 mr-2" /> Enregistrer formulaire
                 </Button>
               )}
+
+              {/* Validation Direction formulaires en attente */}
+              {prospect.statut === 'formulaire_signe' && role === 'direction' && formulaires.filter(f => f.statut_direction === 'en_attente_direction').map(f => (
+                <div key={f.id} className="border rounded-lg p-3 bg-orange-50 space-y-2">
+                  <p className="text-sm font-medium text-orange-800">📋 Formulaire en attente de validation</p>
+                  <p className="text-xs text-gray-600">Signé le {f.date_signature || '—'}</p>
+                  <div>
+                    <Label className="text-xs">Date de validation Direction (obligatoire)</Label>
+                    <input type="date" className="w-full border rounded px-2 py-1 text-sm mt-1"
+                      value={dateValidationFormulaire}
+                      onChange={e => setDateValidationFormulaire(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={!dateValidationFormulaire || loading}
+                      onClick={() => handleValiderFormulaire(f.id, dateValidationFormulaire)}>
+                      ✓ Valider
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200" disabled={loading}
+                      onClick={() => handleRejeterFormulaire(f.id)}>
+                      ✗ Annuler
+                    </Button>
+                  </div>
+                </div>
+              ))}
 
               {/* Étape 6 → Séjour */}
               {prospect.statut === 'formulaire_signe' && (
@@ -630,13 +714,23 @@ export function ProspectDetailClient({
           <DialogHeader><DialogTitle>Enregistrer formulaire signé</DialogTitle></DialogHeader>
           <form onSubmit={handleFormulaire} className="space-y-4">
             <div>
-              <Label>Lot</Label>
-              <Select value={formulaireData.lot_id} onValueChange={v => setFormulaireData(p => ({ ...p, lot_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Choisir un lot" /></SelectTrigger>
-                <SelectContent>
-                  {lots.map(l => <SelectItem key={l.id} value={l.id}>{l.reference} — {formatCurrency(l.prix_individuel)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Lots concernés (sélection multiple possible)</Label>
+              <div className="space-y-1 mt-1">
+                {lots.map(l => (
+                  <label key={l.id} className="flex items-center gap-2 cursor-pointer p-2 rounded border hover:bg-gray-50">
+                    <input type="checkbox" checked={formulaireData.lot_ids.includes(l.id)}
+                      onChange={e => {
+                        const ids = e.target.checked
+                          ? [...formulaireData.lot_ids, l.id]
+                          : formulaireData.lot_ids.filter(id => id !== l.id)
+                        setFormulaireData(p => ({ ...p, lot_ids: ids, lot_id: ids[0] || '' }))
+                      }}
+                    />
+                    <span className="text-sm">{l.reference} — {formatCurrency(l.prix_individuel)}</span>
+                  </label>
+                ))}
+              </div>
+              {formulaireData.lot_ids.length === 0 && <p className="text-xs text-red-500 mt-1">Sélectionnez au moins un lot</p>}
             </div>
             <div>
               <Label>Type de formulaire</Label>

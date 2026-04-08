@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
 import { soumettreSejourDemande } from '@/actions/sejours'
+import { mettreEnListeAttente, closerProspect, reactiverProspect } from '@/actions/prospects'
 import { ajouterLotProspect, retirerLotProspect } from '@/actions/prospects'
 
 type VisiteWithJour = {
@@ -123,7 +124,7 @@ export function MonProspectDetailClient({
   quotaUtilise,
   quotaMax,
 }: Props) {
-  const [prospect] = useState(initialProspect)
+  const [prospect, setProspect] = useState(initialProspect)
   const [visites, setVisites] = useState(initialVisites)
   const [sejours] = useState(initialSejours)
   const [notes, setNotes] = useState(initialNotes)
@@ -184,6 +185,46 @@ export function MonProspectDetailClient({
       toast({ title: '✓ Visite confirmée', description: 'Un email de confirmation vous a été envoyé.' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
+
+  const [showOrangeDialog, setShowOrangeDialog] = useState(false)
+  const [orangeAction, setOrangeAction] = useState<'liste_attente' | 'closer' | 'reactiver' | null>(null)
+  const [listeAttenteDelai, setListeAttenteDelai] = useState('')
+  const [listeAttenteNotes, setListeAttenteNotes] = useState('')
+
+  async function handleOrangeAction() {
+    if (!orangeAction) return
+    setLoading(true)
+    if (orangeAction === 'liste_attente') {
+      if (!listeAttenteDelai) {
+        toast({ title: 'Erreur', description: 'Veuillez saisir un délai estimé.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+      const res = await mettreEnListeAttente(prospect.id, { delai: listeAttenteDelai, notes: listeAttenteNotes })
+      if (res.success) {
+        setProspect(p => ({ ...p, statut: 'liste_attente' }))
+        toast({ title: '✓ Prospect mis en liste d\'attente' })
+        setShowOrangeDialog(false)
+      } else {
+        toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+      }
+    } else if (orangeAction === 'closer') {
+      const res = await closerProspect(prospect.id)
+      if (res.success) {
+        setProspect(p => ({ ...p, statut: 'non_concluant' }))
+        toast({ title: 'Prospect closé' })
+        setShowOrangeDialog(false)
+      }
+    } else if (orangeAction === 'reactiver') {
+      const res = await reactiverProspect(prospect.id)
+      if (res.success) {
+        setProspect(p => ({ ...p, statut: 'sejour_realise' }))
+        toast({ title: '✓ Prospect réactivé — Prêt pour formulaire' })
+        setShowOrangeDialog(false)
+      }
     }
     setLoading(false)
   }
@@ -624,6 +665,78 @@ export function MonProspectDetailClient({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Section Orange — Qualification requise */}
+      {prospect.statut === 'orange' && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mt-4">
+          <h3 className="font-bold text-orange-800 text-base mb-2">🟠 Prospect en attente — Action requise</h3>
+          <p className="text-sm text-orange-700 mb-4">Ce prospect n'a pas signé de formulaire dans les 7 jours suivant son séjour. Vous devez qualifier sa situation.</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => { setOrangeAction('reactiver'); setShowOrangeDialog(true) }}
+              className="w-full py-2 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+              🔄 Réactiver — Prêt à signer maintenant
+            </button>
+            <button onClick={() => { setOrangeAction('liste_attente'); setShowOrangeDialog(true) }}
+              className="w-full py-2 px-4 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
+              📅 Liste d'attente — Intéressé mais plus tard
+            </button>
+            <button onClick={() => { setOrangeAction('closer'); setShowOrangeDialog(true) }}
+              className="w-full py-2 px-4 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600">
+              ❌ Closer — Non intéressé
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog Orange */}
+      {showOrangeDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full space-y-4">
+            <h3 className="font-bold text-lg">
+              {orangeAction === 'liste_attente' ? "📅 Mise en liste d'attente" :
+               orangeAction === 'closer' ? "❌ Fermer le dossier" : "🔄 Réactiver le prospect"}
+            </h3>
+
+            {orangeAction === 'liste_attente' && (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Délai estimé de signature *</label>
+                  <input type="date" value={listeAttenteDelai}
+                    onChange={e => setListeAttenteDelai(e.target.value)}
+                    className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
+                  <p className="text-xs text-gray-500 mt-1">Date à laquelle vous pensez pouvoir relancer ce prospect</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Notes (raison du délai)</label>
+                  <textarea value={listeAttenteNotes}
+                    onChange={e => setListeAttenteNotes(e.target.value)}
+                    rows={3} placeholder="Ex: En attente de financement, déménagement prévu..."
+                    className="w-full mt-1 border rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </>
+            )}
+
+            {orangeAction === 'closer' && (
+              <p className="text-sm text-gray-600">Le prospect sera archivé définitivement. Cette action est irréversible sauf intervention de la Direction.</p>
+            )}
+
+            {orangeAction === 'reactiver' && (
+              <p className="text-sm text-gray-600">Le prospect sera réactivé en statut "séjour réalisé". Vous pourrez ensuite enregistrer le formulaire signé.</p>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowOrangeDialog(false)}
+                className="flex-1 py-2 border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Annuler
+              </button>
+              <button onClick={handleOrangeAction} disabled={loading}
+                className="flex-1 py-2 bg-[#1A3C6E] text-white rounded-lg text-sm font-medium hover:bg-[#163362] disabled:opacity-50">
+                {loading ? 'En cours...' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

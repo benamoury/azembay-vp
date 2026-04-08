@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Home, FileText, Plus, Trash2, Pencil, Check, X, Upload } from 'lucide-react'
+import { Users, Home, FileText, Plus, Trash2, Pencil, Check, X, Upload, Calendar, Tag } from 'lucide-react'
 import { creerUtilisateur, modifierUtilisateur, supprimerUtilisateur, modifierStatutLot, modifierPrixLot } from '@/actions/prospects'
 import { uploadDocument, toggleDocumentActif, supprimerDocument } from '@/actions/documents'
+import { creerWeekend, supprimerWeekend, creerJourDisponible, supprimerJourDisponible, toggleJourActif } from '@/actions/planning'
+import { creerSourceRemuneree, supprimerSourceRemuneree } from '@/actions/prospects'
 import { formatCurrency } from '@/lib/utils'
 import type { Profile, Lot, Document } from '@/lib/types'
 
@@ -41,9 +43,10 @@ interface Props {
   documents: Document[]
   jours: any[]
   weekends: any[]
+  sources: any[]
 }
 
-export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, documents: initDocs }: Props) {
+export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, documents: initDocs, jours: initJours, weekends: initWeekends, sources: initSources }: Props) {
   const { toast } = useToast()
 
   // UTILISATEURS
@@ -147,6 +150,99 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
+  // PLANNING
+  const [jours, setJours] = useState<any[]>(initJours || [])
+  const [weekends, setWeekends] = useState<any[]>(initWeekends || [])
+  const [newJour, setNewJour] = useState({ date: '', capacite: 6, prioritaire: false, actif: true })
+  const [newWeekend, setNewWeekend] = useState({ date_vendredi: '', date_samedi: '', date_dimanche: '', capacite_max: 10 })
+  const [addingJour, setAddingJour] = useState(false)
+  const [addingWeekend, setAddingWeekend] = useState(false)
+
+  // SOURCES REMUNEREES
+  const [sources, setSources] = useState<any[]>(initSources || [])
+  const [newSource, setNewSource] = useState({ nom: '', description: '' })
+  const [addingSource, setAddingSource] = useState(false)
+
+  async function handleCreerSource() {
+    if (!newSource.nom.trim()) return
+    setAddingSource(true)
+    try {
+      const res = await creerSourceRemuneree(newSource)
+      if (res.success) {
+        setSources(prev => [...prev, res.source])
+        setNewSource({ nom: '', description: '' })
+        toast({ title: 'Source ajoutée' })
+      } else {
+        toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+      }
+    } finally { setAddingSource(false) }
+  }
+
+  async function handleSupprimerSource(id: string) {
+    const res = await supprimerSourceRemuneree(id)
+    if (res.success) {
+      setSources(prev => prev.filter(s => s.id !== id))
+      toast({ title: 'Source supprimée' })
+    }
+  }
+
+  async function handleCreerJour() {
+    if (!newJour.date) return
+    setAddingJour(true)
+    try {
+      const res = await creerJourDisponible(newJour)
+      if (res.success) {
+        setJours(prev => [...prev, res.jour])
+        setNewJour({ date: '', capacite: 6, prioritaire: false, actif: true })
+        toast({ title: 'Jour ajouté' })
+      } else {
+        toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+      }
+    } finally { setAddingJour(false) }
+  }
+
+  async function handleSupprimerJour(id: string) {
+    const res = await supprimerJourDisponible(id)
+    if (res.success) {
+      setJours(prev => prev.filter(j => j.id !== id))
+      toast({ title: 'Jour supprimé' })
+    } else {
+      toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+    }
+  }
+
+  async function handleToggleJour(id: string, actif: boolean) {
+    const res = await toggleJourActif(id, !actif)
+    if (res.success) {
+      setJours(prev => prev.map(j => j.id === id ? { ...j, actif: !actif } : j))
+    }
+  }
+
+  async function handleCreerWeekend() {
+    if (!newWeekend.date_vendredi) return
+    setAddingWeekend(true)
+    try {
+      const res = await creerWeekend(newWeekend)
+      if (res.success) {
+        setWeekends(prev => [...prev, res.weekend])
+        setNewWeekend({ date_vendredi: '', date_samedi: '', date_dimanche: '', capacite_max: 10 })
+        toast({ title: 'Weekend ajouté' })
+      } else {
+        toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+      }
+    } finally { setAddingWeekend(false) }
+  }
+
+  async function handleSupprimerWeekend(id: string) {
+    const res = await supprimerWeekend(id)
+    if (res.success) {
+      setWeekends(prev => prev.filter(w => w.id !== id))
+      toast({ title: 'Weekend supprimé' })
+    } else {
+      toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+    }
+  }
+
   async function handleUploadDocument() {
     if (!selectedFile || !newDoc.nom || !newDoc.categorie) {
       toast({ title: 'Fichier, nom et catégorie obligatoires', variant: 'destructive' })
@@ -216,6 +312,8 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
           <TabsTrigger value="utilisateurs"><Users className="w-4 h-4 mr-2" />Utilisateurs</TabsTrigger>
           <TabsTrigger value="lots"><Home className="w-4 h-4 mr-2" />Lots</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="w-4 h-4 mr-2" />Documents</TabsTrigger>
+          <TabsTrigger value="planning"><Calendar className="w-4 h-4 mr-2" />Planning</TabsTrigger>
+          <TabsTrigger value="sources"><Tag className="w-4 h-4 mr-2" />Sources</TabsTrigger>
         </TabsList>
 
         {/* UTILISATEURS */}
@@ -498,6 +596,182 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="planning">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* JOURS DE VISITE */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ajouter un jour de visite</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label>Date</Label>
+                    <Input type="date" value={newJour.date} onChange={e => setNewJour({ ...newJour, date: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Capacité (nb visites max)</Label>
+                    <Input type="number" min={1} max={20} value={newJour.capacite} onChange={e => setNewJour({ ...newJour, capacite: parseInt(e.target.value) })} />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label>Prioritaire</Label>
+                    <button type="button" onClick={() => setNewJour({ ...newJour, prioritaire: !newJour.prioritaire })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${newJour.prioritaire ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${newJour.prioritaire ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <Button onClick={handleCreerJour} disabled={addingJour || !newJour.date} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />{addingJour ? 'Ajout...' : 'Ajouter le jour'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Jours de visite ({jours.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {jours.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucun jour de visite configuré.</p>}
+                  <div className="space-y-2">
+                    {jours.map(j => (
+                      <div key={j.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div>
+                          <p className="font-medium text-sm">{new Date(j.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          <p className="text-xs text-gray-500">Capacité : {j.capacite} {j.prioritaire && <span className="text-orange-600 font-medium">· Prioritaire</span>}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => handleToggleJour(j.id, j.actif)}
+                            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${j.actif ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${j.actif ? 'translate-x-6' : 'translate-x-1'}`} />
+                          </button>
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerJour(j.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* WEEKENDS SEJOURS */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ajouter un weekend de séjour</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label>Vendredi</Label>
+                    <Input type="date" value={newWeekend.date_vendredi}
+                      onChange={e => {
+                        const ven = e.target.value
+                        if (ven) {
+                          const d = new Date(ven)
+                          const sam = new Date(d); sam.setDate(d.getDate() + 1)
+                          const dim = new Date(d); dim.setDate(d.getDate() + 2)
+                          setNewWeekend({
+                            ...newWeekend,
+                            date_vendredi: ven,
+                            date_samedi: sam.toISOString().split('T')[0],
+                            date_dimanche: dim.toISOString().split('T')[0],
+                          })
+                        } else {
+                          setNewWeekend({ ...newWeekend, date_vendredi: '', date_samedi: '', date_dimanche: '' })
+                        }
+                      }} />
+                  </div>
+                  <div>
+                    <Label>Samedi (auto)</Label>
+                    <Input type="date" value={newWeekend.date_samedi} onChange={e => setNewWeekend({ ...newWeekend, date_samedi: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Dimanche (auto)</Label>
+                    <Input type="date" value={newWeekend.date_dimanche} onChange={e => setNewWeekend({ ...newWeekend, date_dimanche: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Capacité max (séjours)</Label>
+                    <Input type="number" min={1} max={50} value={newWeekend.capacite_max} onChange={e => setNewWeekend({ ...newWeekend, capacite_max: parseInt(e.target.value) })} />
+                  </div>
+                  <Button onClick={handleCreerWeekend} disabled={addingWeekend || !newWeekend.date_vendredi} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />{addingWeekend ? 'Ajout...' : 'Ajouter le weekend'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Weekends de séjour ({weekends.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {weekends.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucun weekend configuré.</p>}
+                  <div className="space-y-2">
+                    {weekends.map(w => (
+                      <div key={w.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div>
+                          <p className="font-medium text-sm">
+                            {new Date(w.date_vendredi).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → {new Date(w.date_dimanche).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Capacité : {w.capacite_max} · {w.nb_sejours_confirmes || 0} confirmé(s) · <span className={w.statut === 'ouvert' ? 'text-green-600' : 'text-red-500'}>{w.statut}</span>
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerWeekend(w.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="sources">
+          <div className="max-w-xl space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Ajouter une source rémunérée</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label>Nom de la source</Label>
+                  <Input value={newSource.nom} onChange={e => setNewSource(s => ({ ...s, nom: e.target.value }))} placeholder="ex: Agence Benali, Magazine Immo..." />
+                </div>
+                <div>
+                  <Label>Description (optionnel)</Label>
+                  <Input value={newSource.description} onChange={e => setNewSource(s => ({ ...s, description: e.target.value }))} placeholder="Conditions, commission..." />
+                </div>
+                <Button onClick={handleCreerSource} disabled={addingSource || !newSource.nom.trim()} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />{addingSource ? 'Ajout...' : 'Ajouter la source'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Sources rémunérées ({sources.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sources.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucune source rémunérée configurée.</p>}
+                <div className="space-y-2">
+                  {sources.map(s => (
+                    <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="font-medium text-sm">{s.nom}</p>
+                        {s.description && <p className="text-xs text-gray-500">{s.description}</p>}
+                      </div>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerSource(s.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

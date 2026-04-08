@@ -101,6 +101,8 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="tous">Tous les statuts</SelectItem>
+              <SelectItem value="orange">🟠 Orange (en attente)</SelectItem>
+              <SelectItem value="liste_attente">📅 Liste d'attente</SelectItem>
             {Object.entries(PROSPECT_STATUT_LABELS).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
             ))}

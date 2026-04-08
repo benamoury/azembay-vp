@@ -15,6 +15,10 @@ export type ProspectStatut =
   | 'sejour_realise'
   | 'vendu'
   | 'non_concluant'
+  | 'orange'
+  | 'liste_attente'
+  | 'orange'
+  | 'liste_attente'
 export type VoucherStatut = 'emis' | 'utilise' | 'annule' | 'expire'
 export type DocumentCategorie =
   | 'presentation_pre_visite'
@@ -83,6 +87,11 @@ export interface Prospect {
   lot_cible_id?: string
   notes?: string
   temperature?: number
+  source?: ProspectSource
+  source_remuneree_id?: string
+  source_remuneree?: SourceRemuneree
+  liste_attente_delai?: string
+  liste_attente_notes?: string
   validated_by?: string
   validated_at?: string
   created_at: string
@@ -149,6 +158,11 @@ export interface Formulaire {
   sejour_test_souhaite: boolean
   sejour_dates?: unknown
   statut: FormulaireStatut
+  statut_direction?: FormulaireStatutDirection
+  valide_par_direction_at?: string
+  valide_par_direction_id?: string
+  lot_ids?: string[]
+  lots?: Lot[]
   created_at: string
   prospect?: Prospect
   lot?: Lot
@@ -319,4 +333,17 @@ export interface ProspectLot {
   lot_id: string
   created_at: string
   lot?: Lot
+}
+
+export type ProspectSource = 'public' | 'acquereur' | 'source_remuneree'
+
+export type FormulaireStatutDirection = 'en_attente_direction' | 'valide_direction' | 'rejete_direction'
+
+export interface SourceRemuneree {
+  id: string
+  nom: string
+  description?: string
+  actif: boolean
+  created_by: string
+  created_at: string
 }

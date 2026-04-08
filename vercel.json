@@ -1,6 +1,8 @@
 {
   "framework": "nextjs",
-  "regions": ["cdg1"],
+  "regions": [
+    "cdg1"
+  ],
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
@@ -14,15 +16,31 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/alerte-acquisition",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/cron/guest-list-j1",
       "schedule": "0 20 * * *"
     },
     {
-      "path": "/api/cron/recap-j72",
+      "path": "/api/cron/post-sejour-j1",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/post-sejour-j2-midi",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/post-sejour-j2-soir",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/post-sejour-j7",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/alerte-acquisition",
+      "path": "/api/cron/post-sejour-j60",
       "schedule": "0 8 * * *"
     }
   ]
