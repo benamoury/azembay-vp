@@ -6,6 +6,7 @@ import {
   buildEmailNouveauProspect,
   buildEmailProspectQualifie,
   buildEmailProspectValide,
+  buildEmailVoucher,
 } from '@/lib/email/resend'
 import type { ProspectStatut } from '@/lib/types'
 
@@ -259,13 +260,45 @@ export async function creerVoucher(data: {
   const { data: voucher, error } = await admin
     .from('vouchers')
     .insert(data)
-    .select('*, prospect:prospects(nom,prenom,email), apporteur:profiles!apporteur_id(nom,prenom,email,telephone)')
+    .select('*, prospect:prospects(nom,prenom,email), apporteur:profiles!apporteur_id(nom,prenom,email,telephone), manager:profiles!manager_id(nom,prenom,email)')
     .single()
 
   if (error) return { success: false, error: error.message }
 
   // Advance prospect to visite_programmee
   await admin.from('prospects').update({ statut: 'visite_programmee' }).eq('id', data.prospect_id)
+
+  // Envoyer email voucher au prospect + apporteur + manager
+  if (voucher) {
+    const prospect = voucher.prospect as { nom: string; prenom: string; email: string } | null
+    const apporteur = (Array.isArray(voucher.apporteur) ? voucher.apporteur[0] : voucher.apporteur) as { nom: string; prenom: string; email: string; telephone?: string } | null
+    const manager = (Array.isArray(voucher.manager) ? voucher.manager[0] : voucher.manager) as { nom: string; prenom: string; email: string } | null
+
+    const dateFormatted = new Date(data.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+
+    if (prospect && apporteur && manager) {
+      const emailData = buildEmailVoucher({
+        prospect: { nom: prospect.nom, prenom: prospect.prenom, email: prospect.email },
+        apporteur: { nom: apporteur.nom, prenom: apporteur.prenom, telephone: apporteur.telephone },
+        manager: { nom: manager.nom, prenom: manager.prenom },
+        date_visite: dateFormatted,
+        heure_visite: data.heure_visite,
+        numero_voucher: voucher.numero_voucher,
+      })
+
+      // Envoyer aux 3 destinataires
+      const recipients: string[] = []
+      if (prospect.email) recipients.push(prospect.email)
+      if (apporteur.email) recipients.push(apporteur.email)
+      if (manager.email) recipients.push(manager.email)
+
+      if (recipients.length > 0) {
+        await sendEmail({ to: recipients, ...emailData })
+      }
+    }
+  }
 
   return { success: true, voucher }
 }

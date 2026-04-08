@@ -449,3 +449,63 @@ export function buildEmailFormulaireSigne(data: {
     `),
   }
 }
+
+// ─── Voucher Visite — Prospect + Apporteur + Manager ─────────────────────────
+
+export function buildEmailVoucher(data: {
+  prospect: { nom: string; prenom: string; email: string }
+  apporteur: { nom: string; prenom: string; telephone?: string }
+  manager: { nom: string; prenom: string }
+  date_visite: string
+  heure_visite: string
+  numero_voucher?: string
+  lien_annulation?: string
+}) {
+  const heure = data.heure_visite ? data.heure_visite.slice(0, 5) : '17:00'
+  const voucherNum = data.numero_voucher || 'VP-' + Date.now().toString().slice(-6)
+  return {
+    subject: `🎟️ Votre voucher visite Azembay — ${data.date_visite}`,
+    html: baseLayout(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="background:#C8973A;color:white;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;letter-spacing:1px;">VOUCHER VISITE CONFIRMÉ</span>
+      </div>
+      <h2 style="color:#1A3C6E;margin:0 0 16px;">Bonjour ${data.prospect.prenom},</h2>
+      <p style="color:#374151;">Votre visite <strong>Golden Hour — Coucher de Soleil (3H)</strong> est confirmée. Merci de vous munir de ce voucher et d'une pièce d'identité à votre arrivée.</p>
+
+      <div style="background:white;border:2px solid #C8973A;border-radius:12px;padding:24px;margin:20px 0;">
+        <div style="text-align:center;border-bottom:1px solid #f0e6d3;padding-bottom:16px;margin-bottom:16px;">
+          <p style="font-size:11px;color:#9CA3AF;margin:0;letter-spacing:2px;">NUMÉRO VOUCHER</p>
+          <p style="font-size:24px;font-weight:700;color:#1A3C6E;margin:4px 0;letter-spacing:3px;">${voucherNum}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">📅 Date</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.date_visite}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">🌅 Créneau</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">Coucher de Soleil — ${heure} (3H)</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👤 Prospect</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.prospect.prenom} ${data.prospect.nom}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">🤝 Apporteur</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.apporteur.prenom} ${data.apporteur.nom}${data.apporteur.telephone ? ' — ' + data.apporteur.telephone : ''}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👔 Manager</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.manager.prenom} ${data.manager.nom}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background:#FEF3C7;border-radius:8px;padding:12px 16px;margin:16px 0;">
+        <p style="margin:0;font-size:13px;color:#92400E;">📍 <strong>Azembay — RIPT 1 — Sidi Bou Naim, Province d'El Jadida</strong><br/>Coordonnées GPS transmises par votre apporteur.</p>
+      </div>
+
+      ${data.lien_annulation ? `<p style="text-align:center;margin-top:20px;"><a href="${data.lien_annulation}" style="color:#9CA3AF;font-size:12px;">Annuler ma visite</a></p>` : ''}
+    `),
+  }
+}
