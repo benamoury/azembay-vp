@@ -28,7 +28,7 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
     profil: '', localisation: '',
     budget_estime: '', capacite_financiere: '',
     reference_personnelle: '', valeur_ajoutee: '',
-    lot_cible_id: '', notes: '',
+    lot_cible_id: '', notes: '', source: '',
   })
 
   function set(key: string, value: string) {
@@ -43,12 +43,16 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
       ...form,
       apporteur_id: apporteurId,
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
+      notes: form.source ? `Source: ${form.source}${form.notes ? ' — ' + form.notes : ''}` : form.notes,
       lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
     }
 
     const result = await soumettreProspect(payload as Parameters<typeof soumettreProspect>[0])
     if (result.success) {
-      toast({ title: 'Prospect soumis', description: 'Votre prospect a été soumis pour validation.' })
+      toast({ 
+        title: '✅ Prospect soumis avec succès', 
+        description: 'Votre lead a bien été enregistré. Le voucher de visite vous sera envoyé automatiquement par email dès que le Manager confirme sa présence et valide le créneau.' 
+      })
       router.push('/mes-prospects')
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
@@ -168,8 +172,31 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
               <Textarea value={form.reference_personnelle} onChange={e => set('reference_personnelle', e.target.value)} rows={2} />
             </div>
             <div>
-              <Label>Valeur ajoutée de ce prospect</Label>
-              <Textarea value={form.valeur_ajoutee} onChange={e => set('valeur_ajoutee', e.target.value)} rows={2} />
+              <Label>Profil du prospect (valeur ajoutée) *</Label>
+              <Select value={form.valeur_ajoutee} onValueChange={v => set('valeur_ajoutee', v)} required>
+                <SelectTrigger><SelectValue placeholder="Sélectionner le profil" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HNWI">HNWI — High Net Worth Individual</SelectItem>
+                  <SelectItem value="Serial Investor">Serial Investor</SelectItem>
+                  <SelectItem value="Bloc Sale Candidate">Bloc Sale Candidate</SelectItem>
+                  <SelectItem value="Profession Libérale Cash">Profession Libérale Cash</SelectItem>
+                  <SelectItem value="Autre">Autre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Source du contact</Label>
+              <Select value={form.source} onValueChange={v => set('source', v)}>
+                <SelectTrigger><SelectValue placeholder="Comment ce prospect a-t-il été identifié ?" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Réseau personnel">Réseau personnel</SelectItem>
+                  <SelectItem value="Recommandation client">Recommandation client</SelectItem>
+                  <SelectItem value="Événement professionnel">Événement professionnel</SelectItem>
+                  <SelectItem value="Réseaux sociaux">Réseaux sociaux</SelectItem>
+                  <SelectItem value="Rencontre directe">Rencontre directe</SelectItem>
+                  <SelectItem value="Autre">Autre</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Notes complémentaires</Label>

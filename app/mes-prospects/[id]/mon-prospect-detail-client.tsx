@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
 import { soumettreSejourDemande } from '@/actions/sejours'
-import { mettreEnListeAttente, closerProspect, reactiverProspect } from '@/actions/prospects'
+import { mettreEnListeAttente, closerProspect, reactiverProspect, modifierProspect } from '@/actions/prospects'
 import { ajouterLotProspect, retirerLotProspect } from '@/actions/prospects'
 
 type VisiteWithJour = {
@@ -151,6 +151,35 @@ export function MonProspectDetailClient({
 
   const [noteText, setNoteText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editData, setEditData] = useState({
+    nom: prospect.nom || '',
+    prenom: prospect.prenom || '',
+    email: prospect.email || '',
+    telephone: prospect.telephone || '',
+    ville: prospect.ville || '',
+    budget_estime: prospect.budget_estime?.toString() || '',
+    capacite_financiere: prospect.capacite_financiere || '',
+    valeur_ajoutee: prospect.valeur_ajoutee || '',
+    reference_personnelle: prospect.reference_personnelle || '',
+    notes: prospect.notes || '',
+  })
+
+  async function handleModifier() {
+    setLoading(true)
+    const result = await modifierProspect(prospect.id, {
+      ...editData,
+      budget_estime: editData.budget_estime ? parseFloat(editData.budget_estime) : undefined,
+    })
+    if (result.success) {
+      setProspect(p => ({ ...p, ...editData, budget_estime: editData.budget_estime ? parseFloat(editData.budget_estime) : undefined }))
+      setShowEditDialog(false)
+      toast({ title: '✓ Fiche mise à jour' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
   const { toast } = useToast()
 
   const hasActiveVisite = visites.some(v => !['annulee'].includes(v.statut))
@@ -182,7 +211,10 @@ export function MonProspectDetailClient({
       }])
       setShowVisiteDialog(false)
       setVisiteJourId(''); setVisiteHeure(''); setVisiteNotes('')
-      toast({ title: '✓ Visite confirmée', description: 'Un email de confirmation vous a été envoyé.' })
+      toast({ 
+        title: '✓ Demande de visite soumise', 
+        description: 'Votre demande est enregistrée. Le voucher de visite vous sera envoyé automatiquement par email dès que le Manager confirme sa présence.'
+      })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -553,8 +585,16 @@ export function MonProspectDetailClient({
               </Select>
             </div>
             <div>
-              <Label>Heure souhaitée (optionnel)</Label>
-              <Input type="time" value={visiteHeure} onChange={e => setVisiteHeure(e.target.value)} />
+              <Label>Créneau souhaité</Label>
+              <Select value={visiteHeure} onValueChange={setVisiteHeure}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="17:00">🌅 Golden Hour — 17h00 (recommandé)</SelectItem>
+                  <SelectItem value="10:00">🌄 Matinée — 10h00</SelectItem>
+                  <SelectItem value="14:00">☀️ Après-midi — 14h00</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-amber-600 mt-1">⭐ La Golden Hour démarre à 17h — moment idéal pour découvrir le site</p>
             </div>
             <div>
               <Label>Note (optionnel)</Label>

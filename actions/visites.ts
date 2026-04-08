@@ -277,6 +277,14 @@ export async function validerPresenceManager(visiteId: string) {
   if (!user) return { success: false, error: 'Non authentifié' }
 
   const admin = createAdminClient()
+
+  // Récupérer la visite complète pour l'email
+  const { data: visite } = await admin
+    .from('visites')
+    .select('prospect_id, date_visite, heure_visite, apporteur_id, annulation_token')
+    .eq('id', visiteId)
+    .single()
+
   const { error } = await admin
     .from('visites')
     .update({
@@ -286,6 +294,52 @@ export async function validerPresenceManager(visiteId: string) {
     .eq('id', visiteId)
 
   if (error) return { success: false, error: error.message }
+
+  // Envoyer l'email voucher au prospect + apporteur maintenant que le manager confirme
+  if (visite) {
+    const { data: prospect } = await admin
+      .from('prospects')
+      .select('nom, prenom, email, apporteur_id, apporteur:profiles!apporteur_id(nom, prenom, email, telephone)')
+      .eq('id', visite.prospect_id)
+      .single()
+
+    if (prospect) {
+      const apRaw = prospect.apporteur
+      const ap = (Array.isArray(apRaw) ? apRaw[0] : apRaw) as { nom: string; prenom: string; email: string; telephone?: string } | null | undefined
+      const lien_annulation = visite.annulation_token
+        ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'}/annuler/${visite.annulation_token}`
+        : ''
+
+      const dateFormatted = new Date(visite.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      })
+
+      // Email au prospect
+      if (prospect.email) {
+        const emailData = buildEmailConfirmationVisite({
+          prospect: { nom: prospect.nom, prenom: prospect.prenom },
+          date_visite: dateFormatted,
+          apporteur: ap
+            ? { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone }
+            : { nom: 'Equipe', prenom: 'Azembay', telephone: undefined },
+          lien_annulation,
+        })
+        await sendEmail({ to: prospect.email, ...emailData })
+      }
+
+      // Email à l'apporteur
+      if (ap?.email) {
+        const emailData = buildEmailConfirmationVisite({
+          prospect: { nom: prospect.nom, prenom: prospect.prenom },
+          date_visite: dateFormatted,
+          apporteur: { nom: ap.nom, prenom: ap.prenom, telephone: ap.telephone },
+          lien_annulation,
+        })
+        await sendEmail({ to: ap.email, ...emailData })
+      }
+    }
+  }
+
   return { success: true }
 }
 

@@ -679,3 +679,34 @@ export async function validerAssignation(prospectId: string) {
 
 // ─── Actions post-séjour (orange) ─────────────────────────────────────────────
 
+
+// ─── Modification prospect (apporteur + manager + direction) ─────────────────
+
+export async function modifierProspect(prospectId: string, data: {
+  nom?: string
+  prenom?: string
+  email?: string
+  telephone?: string
+  ville?: string
+  profil?: string
+  budget_estime?: number
+  capacite_financiere?: string
+  reference_personnelle?: string
+  valeur_ajoutee?: string
+  notes?: string
+  source?: string
+}) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  const { error } = await admin
+    .from('prospects')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', prospectId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}

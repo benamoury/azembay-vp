@@ -80,7 +80,7 @@ export function ProspectDetailClient({
   const [noteText, setNoteText] = useState('')
   const [noteTemp, setNoteTemp] = useState<number | undefined>(undefined)
   const [visiteData, setVisiteData] = useState({ jour_id: '', notes_apporteur: '' })
-  const [voucherData, setVoucherData] = useState({ date_visite: '', heure_visite: '10:00' })
+  const [voucherData, setVoucherData] = useState({ date_visite: '', heure_visite: '17:00' })
   const [formulaireData, setFormulaireData] = useState({ lot_id: '', lot_ids: [] as string[], type: 'avec_acompte', programme_hotelier: 'standard', date_signature: '', sejour_test_souhaite: false })
   const [sejourData, setSejourData] = useState({ date_arrivee: '', date_depart: '', nb_adultes: 2, nb_enfants: 0 })
   const { toast } = useToast()
@@ -697,8 +697,16 @@ export function ProspectDetailClient({
               <Input type="date" value={voucherData.date_visite} onChange={e => setVoucherData(p => ({ ...p, date_visite: e.target.value }))} required />
             </div>
             <div>
-              <Label>Heure</Label>
-              <Input type="time" value={voucherData.heure_visite} onChange={e => setVoucherData(p => ({ ...p, heure_visite: e.target.value }))} required />
+              <Label>Créneau de visite</Label>
+              <Select value={voucherData.heure_visite} onValueChange={v => setVoucherData(p => ({ ...p, heure_visite: v }))} required>
+                <SelectTrigger><SelectValue placeholder="Sélectionner le créneau" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="17:00">🌅 Golden Hour — 17h00 (recommandé)</SelectItem>
+                  <SelectItem value="10:00">🌄 Matinée — 10h00</SelectItem>
+                  <SelectItem value="14:00">☀️ Après-midi — 14h00</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-amber-600 mt-1">⭐ Confirmez votre présence pour accompagner l'apporteur au créneau choisi</p>
             </div>
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => setShowVoucherDialog(false)}>Annuler</Button>
