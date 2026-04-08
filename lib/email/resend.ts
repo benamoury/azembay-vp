@@ -18,7 +18,7 @@ function baseLayout(content: string) {
     <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
       <div style="background:#1A3C6E;padding:24px 32px;text-align:center;">
         <h1 style="color:#C8973A;margin:0;font-size:22px;letter-spacing:2px;">AZEMBAY</h1>
-        <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">RIPT 1 — Vente Privée Off-Market — Sidi Bou Naim</p>
+        <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Vente Privée Off-Market — Sidi Bou Naim</p>
       </div>
       <div style="padding:32px;background:#F8FAFC;">
         ${content}
@@ -487,22 +487,22 @@ export function buildEmailVoucher(data: {
             <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">Coucher de Soleil — ${heure} (3H)</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👤 Prospect</td>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👤 Votre nom</td>
             <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.prospect.prenom} ${data.prospect.nom}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;color:#6B7280;font-size:13px;">🤝 Apporteur</td>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">🤝 Votre contact</td>
             <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.apporteur.prenom} ${data.apporteur.nom}${data.apporteur.telephone ? ' — ' + data.apporteur.telephone : ''}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👔 Manager</td>
+            <td style="padding:8px 0;color:#6B7280;font-size:13px;">👔 Duty Manager</td>
             <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">${data.manager.prenom} ${data.manager.nom}</td>
           </tr>
         </table>
       </div>
 
       <div style="background:#FEF3C7;border-radius:8px;padding:12px 16px;margin:16px 0;">
-        <p style="margin:0;font-size:13px;color:#92400E;">📍 <strong>Azembay — RIPT 1 — Sidi Bou Naim, Province d'El Jadida</strong><br/>Coordonnées GPS transmises par votre apporteur.</p>
+        <p style="margin:0;font-size:13px;color:#92400E;">📍 <strong>Azembay — Sidi Bou Naim, Province d'El Jadida</strong><br/>Autoroute El Jadida, sortie Tnine Chtouka, puis Waze jusqu'au douar Sidi Bou Naim.<br/>Bonne route et à très vite !</p>
       </div>
 
       ${data.lien_annulation ? `<p style="text-align:center;margin-top:20px;"><a href="${data.lien_annulation}" style="color:#9CA3AF;font-size:12px;">Annuler ma visite</a></p>` : ''}

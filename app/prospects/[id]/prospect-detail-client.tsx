@@ -667,8 +667,8 @@ export function ProspectDetailClient({
                 </Button>
               )}
 
-              {/* Étape 3 → Voucher + Marquer visite réalisée */}
-              {prospect.statut === 'visite_programmee' && (
+              {/* Étape 3 → Voucher + Marquer visite réalisée — Manager uniquement */}
+              {prospect.statut === 'visite_programmee' && role === 'manager' && (
                 <div className="space-y-2">
                   <Button className="w-full bg-[#C8973A] hover:bg-[#b07e2e]" onClick={() => setShowVoucherDialog(true)} disabled={loading}>
                     <Ticket className="w-4 h-4 mr-2" /> Émettre le voucher visite
@@ -676,6 +676,12 @@ export function ProspectDetailClient({
                   <Button className="w-full" onClick={handleAvancer} disabled={loading}>
                     <CheckCircle className="w-4 h-4 mr-2" /> Marquer visite réalisée
                   </Button>
+                </div>
+              )}
+              {/* Direction — visite programmée : lecture seule */}
+              {prospect.statut === 'visite_programmee' && role === 'direction' && (
+                <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+                  📋 Visite programmée — le Duty Manager gère le voucher et la confirmation.
                 </div>
               )}
 
