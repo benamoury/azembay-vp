@@ -133,7 +133,7 @@ export function MonProspectDetailClient({
   // Visite dialog
   const [showVisiteDialog, setShowVisiteDialog] = useState(false)
   const [visiteJourId, setVisiteJourId] = useState('')
-  const [visiteHeure, setVisiteHeure] = useState('')
+  const [visiteHeure, setVisiteHeure] = useState('17:00')
   const [visiteNotes, setVisiteNotes] = useState('')
 
   // Séjour dialog
@@ -586,15 +586,13 @@ export function MonProspectDetailClient({
             </div>
             <div>
               <Label>Créneau souhaité</Label>
-              <Select value={visiteHeure} onValueChange={setVisiteHeure}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un créneau" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="17:00">🌅 Golden Hour — 17h00 (recommandé)</SelectItem>
-                  <SelectItem value="10:00">🌄 Matinée — 10h00</SelectItem>
-                  <SelectItem value="14:00">☀️ Après-midi — 14h00</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-amber-600 mt-1">⭐ La Golden Hour démarre à 17h — moment idéal pour découvrir le site</p>
+              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <span className="text-2xl">🌅</span>
+                <div>
+                  <p className="font-semibold text-amber-800">Coucher de soleil — 3H</p>
+                  <p className="text-xs text-amber-600">Départ 17h00 · Durée 3 heures · Créneau unique</p>
+                </div>
+              </div>
             </div>
             <div>
               <Label>Note (optionnel)</Label>

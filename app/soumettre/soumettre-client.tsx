@@ -28,7 +28,7 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
     profil: '', localisation: '',
     budget_estime: '', capacite_financiere: '',
     reference_personnelle: '', valeur_ajoutee: '',
-    lot_cible_id: '', notes: '', source: '',
+    lot_cible_id: '', notes: '', source_contact: '',
   })
 
   function set(key: string, value: string) {
@@ -43,7 +43,8 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
       ...form,
       apporteur_id: apporteurId,
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
-      notes: form.source ? `Source: ${form.source}${form.notes ? ' — ' + form.notes : ''}` : form.notes,
+      reference_personnelle: form.reference_personnelle,
+      notes: [form.source_contact ? `Source contact: ${form.source_contact}` : '', form.notes].filter(Boolean).join(' — ') || undefined,
       lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
     }
 
@@ -186,7 +187,7 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
             </div>
             <div>
               <Label>Source du contact</Label>
-              <Select value={form.source} onValueChange={v => set('source', v)}>
+              <Select value={form.source_contact} onValueChange={v => set('source_contact', v)}>
                 <SelectTrigger><SelectValue placeholder="Comment ce prospect a-t-il été identifié ?" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Réseau personnel">Réseau personnel</SelectItem>

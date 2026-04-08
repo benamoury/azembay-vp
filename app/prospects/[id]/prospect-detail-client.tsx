@@ -25,7 +25,7 @@ import {
 import Link from 'next/link'
 import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
-  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection,
+  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection, modifierProspect,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
@@ -68,6 +68,35 @@ export function ProspectDetailClient({
   role,
 }: Props) {
   const [prospect, setProspect] = useState(initialProspect)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editData, setEditData] = useState({
+    nom: initialProspect.nom || '',
+    prenom: initialProspect.prenom || '',
+    email: initialProspect.email || '',
+    telephone: initialProspect.telephone || '',
+    ville: initialProspect.ville || '',
+    budget_estime: initialProspect.budget_estime?.toString() || '',
+    capacite_financiere: initialProspect.capacite_financiere || '',
+    valeur_ajoutee: initialProspect.valeur_ajoutee || '',
+    reference_personnelle: initialProspect.reference_personnelle || '',
+    notes: initialProspect.notes || '',
+  })
+
+  async function handleModifierProspect() {
+    setLoading(true)
+    const result = await modifierProspect(prospect.id, {
+      ...editData,
+      budget_estime: editData.budget_estime ? parseFloat(editData.budget_estime) : undefined,
+    })
+    if (result.success) {
+      setProspect(p => ({ ...p, ...editData, budget_estime: editData.budget_estime ? parseFloat(editData.budget_estime) : undefined }))
+      setShowEditDialog(false)
+      toast({ title: '✓ Fiche mise à jour' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setLoading(false)
+  }
   const [formulaires, setFormulaires] = useState(initialFormulaires)
   const [dateValidationFormulaire, setDateValidationFormulaire] = useState('')
   const [vouchers] = useState(initialVouchers)
@@ -280,7 +309,49 @@ export function ProspectDetailClient({
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-[#1A3C6E]">{prospect.prenom} {prospect.nom}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-[#1A3C6E]">{prospect.prenom} {prospect.nom}</h1>
+              <Button size="sm" variant="outline" onClick={() => setShowEditDialog(true)} className="text-[#1A3C6E] border-[#1A3C6E]">
+                ✏️ Modifier
+              </Button>
+            </div>
+
+            {/* Dialog Modifier prospect */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Modifier la fiche prospect</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Prénom</Label><Input value={editData.prenom} onChange={e => setEditData(p => ({ ...p, prenom: e.target.value }))} /></div>
+                    <div><Label>Nom</Label><Input value={editData.nom} onChange={e => setEditData(p => ({ ...p, nom: e.target.value }))} /></div>
+                    <div><Label>Email</Label><Input value={editData.email} onChange={e => setEditData(p => ({ ...p, email: e.target.value }))} /></div>
+                    <div><Label>Téléphone</Label><Input value={editData.telephone} onChange={e => setEditData(p => ({ ...p, telephone: e.target.value }))} /></div>
+                    <div><Label>Ville</Label><Input value={editData.ville} onChange={e => setEditData(p => ({ ...p, ville: e.target.value }))} /></div>
+                    <div><Label>Budget estimé</Label><Input type="number" value={editData.budget_estime} onChange={e => setEditData(p => ({ ...p, budget_estime: e.target.value }))} /></div>
+                  </div>
+                  <div><Label>Capacité financière</Label><Input value={editData.capacite_financiere} onChange={e => setEditData(p => ({ ...p, capacite_financiere: e.target.value }))} /></div>
+                  <div>
+                    <Label>Profil (valeur ajoutée)</Label>
+                    <Select value={editData.valeur_ajoutee} onValueChange={v => setEditData(p => ({ ...p, valeur_ajoutee: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HNWI">HNWI</SelectItem>
+                        <SelectItem value="Serial Investor">Serial Investor</SelectItem>
+                        <SelectItem value="Bloc Sale Candidate">Bloc Sale Candidate</SelectItem>
+                        <SelectItem value="Profession Libérale Cash">Profession Libérale Cash</SelectItem>
+                        <SelectItem value="Autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Référence personnelle</Label><Textarea value={editData.reference_personnelle} onChange={e => setEditData(p => ({ ...p, reference_personnelle: e.target.value }))} rows={2} /></div>
+                  <div><Label>Notes</Label><Textarea value={editData.notes} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))} rows={2} /></div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>Annuler</Button>
+                    <Button className="flex-1 bg-[#1A3C6E]" onClick={handleModifierProspect} disabled={loading}>{loading ? 'Enregistrement...' : 'Enregistrer'}</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             {isHighValue && <Badge variant="orange">≥ 5M MAD</Badge>}
             <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', PROSPECT_STATUT_COLORS[prospect.statut])}>
               {PROSPECT_STATUT_LABELS[prospect.statut]}
@@ -698,15 +769,13 @@ export function ProspectDetailClient({
             </div>
             <div>
               <Label>Créneau de visite</Label>
-              <Select value={voucherData.heure_visite} onValueChange={v => setVoucherData(p => ({ ...p, heure_visite: v }))} required>
-                <SelectTrigger><SelectValue placeholder="Sélectionner le créneau" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="17:00">🌅 Golden Hour — 17h00 (recommandé)</SelectItem>
-                  <SelectItem value="10:00">🌄 Matinée — 10h00</SelectItem>
-                  <SelectItem value="14:00">☀️ Après-midi — 14h00</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-amber-600 mt-1">⭐ Confirmez votre présence pour accompagner l'apporteur au créneau choisi</p>
+              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <span className="text-2xl">🌅</span>
+                <div>
+                  <p className="font-semibold text-amber-800">Coucher de soleil — 3H</p>
+                  <p className="text-xs text-amber-600">Départ 17h00 · Durée 3 heures · Confirmez votre présence</p>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => setShowVoucherDialog(false)}>Annuler</Button>
