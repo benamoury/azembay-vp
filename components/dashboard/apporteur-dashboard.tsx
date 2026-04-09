@@ -22,6 +22,8 @@ interface ApporteurDashboardProps {
   quotaMax: number
   nom: string
   prenom: string
+  prochainesVisites?: any[]
+  prochainsWeekends?: any[]
 }
 
 const OBJECTIF_VENTES = 3
@@ -33,7 +35,7 @@ const LOT_TYPE_LABELS: Record<string, string> = {
   appart_1ch: 'Appart. 1CH',
 }
 
-export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDisponibles, quotaUsed, quotaMax, nom, prenom }: ApporteurDashboardProps) {
+export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDisponibles, quotaUsed, quotaMax, nom, prenom, prochainesVisites = [], prochainsWeekends = [] }: ApporteurDashboardProps) {
   const ventesAcquises = ventes.filter(v => v.statut === 'acte_signe')
   const commissionAcquise = ventesAcquises.reduce((sum, v) => sum + (v.commission_apporteur || v.prix_notarie * COMMISSION_RATE), 0)
   const commissionEstimee = ventes.filter(v => v.statut === 'en_cours').reduce((sum, v) => sum + v.prix_notarie * COMMISSION_RATE, 0)
@@ -53,6 +55,7 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDi
 
   return (
     <div className="space-y-6">
+      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
       <div>
         <h1 className="text-2xl font-bold text-[#1A3C6E]">Bonjour, {prenom} !</h1>
         <p className="text-sm text-gray-500 mt-1">Votre tableau de bord — Golden Hour 2026</p>
@@ -247,3 +250,72 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDi
     </div>
   )
 }
+
+
+function ProchainesVisitesWidget({ visites, weekends }: { visites: any[], weekends: any[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-[#1A3C6E] flex items-center gap-2">🌅 Prochaines visites</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {visites.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucune visite à venir.</p>
+          ) : (
+            <div className="space-y-2">
+              {visites.map((v: any) => {
+                const p = Array.isArray(v.prospect) ? v.prospect[0] : v.prospect
+                const isToday = v.date_visite === new Date().toISOString().split('T')[0]
+                const date = new Date(v.date_visite + 'T00:00:00')
+                return (
+                  <div key={v.id} className={`flex items-center justify-between py-2 px-3 rounded-lg border ${isToday ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+                    <p className="text-sm font-medium text-[#1A3C6E]">{p?.prenom} {p?.nom}</p>
+                    <div className="text-right">
+                      <p className={`text-xs font-semibold ${isToday ? 'text-amber-700' : 'text-gray-600'}`}>
+                        {isToday ? "Aujourd'hui" : date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className="text-xs text-amber-600">🌅 17h00</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-[#1A3C6E] flex items-center gap-2">🏕️ Prochains weekends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {weekends.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucun weekend à venir.</p>
+          ) : (
+            <div className="space-y-2">
+              {weekends.map((w: any) => {
+                const date = new Date(w.date_vendredi + 'T00:00:00')
+                const places = (w.seuil_guests || 0) - (w.nb_guests_confirmes || 0)
+                return (
+                  <div key={w.id} className="flex items-center justify-between py-2 px-3 rounded-lg border bg-white">
+                    <div>
+                      <p className="text-sm font-medium text-[#1A3C6E]">{date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</p>
+                      <p className="text-xs text-gray-400">Vendredi → Dimanche</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${w.statut === 'valide' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {w.statut === 'valide' ? '✓ Validé' : 'Ouvert'}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-0.5">{places} place(s)</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+

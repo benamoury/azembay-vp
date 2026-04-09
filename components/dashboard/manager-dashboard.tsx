@@ -22,9 +22,11 @@ interface ManagerDashboardProps {
   liens: LienSecurise[]
   sejours: Sejour[]
   nonQualifies: { id: string; nom: string; prenom: string; created_at: string }[]
+  prochainesVisites?: any[]
+  prochainsWeekends?: any[]
 }
 
-export function ManagerDashboard({ prospects, visitesAujourdhui, liens, sejours, nonQualifies }: ManagerDashboardProps) {
+export function ManagerDashboard({ prospects, visitesAujourdhui, liens, sejours, nonQualifies, prochainesVisites = [], prochainsWeekends = [] }: ManagerDashboardProps) {
   const liensActifs = liens.filter(l => new Date(l.expires_at) > new Date())
   const aQualifier = prospects.filter(p => p.statut === 'soumis').length
   const aValider = prospects.filter(p => p.statut === 'qualifie').length
@@ -207,4 +209,97 @@ export function ManagerDashboard({ prospects, visitesAujourdhui, liens, sejours,
       )}
     </div>
   )
+
+
+// ─── Widget Prochaines Visites + Weekends ─────────────────────────────────────
+
+function ProchainesVisitesWidget({ visites, weekends, roleLabel }: {
+  visites: any[]
+  weekends: any[]
+  roleLabel?: string
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Prochaines visites */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-[#1A3C6E] flex items-center gap-2">
+            🌅 Prochaines visites
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {visites.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucune visite à venir.</p>
+          ) : (
+            <div className="space-y-2">
+              {visites.map((v: any) => {
+                const p = Array.isArray(v.prospect) ? v.prospect[0] : v.prospect
+                const ap = Array.isArray(v.apporteur) ? v.apporteur[0] : v.apporteur
+                const date = new Date(v.date_visite + 'T00:00:00')
+                const isToday = v.date_visite === new Date().toISOString().split('T')[0]
+                return (
+                  <div key={v.id} className={cn("flex items-center justify-between py-2 px-3 rounded-lg border", isToday ? "bg-amber-50 border-amber-200" : "bg-white")}>
+                    <div>
+                      <p className="text-sm font-medium text-[#1A3C6E]">
+                        {p?.prenom} {p?.nom}
+                      </p>
+                      {ap && <p className="text-xs text-gray-400">{ap.prenom} {ap.nom}</p>}
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-xs font-semibold", isToday ? "text-amber-700" : "text-gray-600")}>
+                        {isToday ? "Aujourd'hui" : date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className="text-xs text-amber-600">🌅 17h00</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Prochains weekends */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-[#1A3C6E] flex items-center gap-2">
+            🏕️ Prochains weekends confirmés
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {weekends.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucun weekend ouvert.</p>
+          ) : (
+            <div className="space-y-2">
+              {weekends.map((w: any) => {
+                const date = new Date(w.date_vendredi + 'T00:00:00')
+                const places = w.seuil_guests - (w.nb_guests_confirmes || 0)
+                return (
+                  <div key={w.id} className="flex items-center justify-between py-2 px-3 rounded-lg border bg-white">
+                    <div>
+                      <p className="text-sm font-medium text-[#1A3C6E]">
+                        {date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                      </p>
+                      <p className="text-xs text-gray-400">Vendredi → Dimanche</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full font-medium",
+                        w.statut === 'valide' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                      )}>
+                        {w.statut === 'valide' ? '✓ Validé' : 'Ouvert'}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-0.5">{places} place(s)</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 }

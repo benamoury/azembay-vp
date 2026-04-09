@@ -25,7 +25,7 @@ import {
 import Link from 'next/link'
 import {
   avancerEtapeProspect, marquerNonConcluant, emettreLienSecurise,
-  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection, modifierProspect, mettreEnListeAttente,
+  creerVoucher, creerFormulaire, creerSejour, validerProspect, rejeterProspect, qualifierProspect, validerFormulaireDirection, rejeterFormulaireDirection, modifierProspect, mettreEnListeAttente, renvoyerVoucher,
 } from '@/actions/prospects'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
@@ -115,7 +115,19 @@ export function ProspectDetailClient({
     }
     setLoading(false)
   }
-  const [vouchers] = useState(initialVouchers)
+  const [vouchers, setVouchers] = useState(initialVouchers)
+  const [renvoyantVoucherId, setRenvoyantVoucherId] = useState<string | null>(null)
+
+  async function handleRenvoyerVoucher(voucherId: string) {
+    setRenvoyantVoucherId(voucherId)
+    const result = await renvoyerVoucher(voucherId)
+    if (result.success) {
+      toast({ title: '✓ Voucher renvoyé', description: 'Email envoyé au prospect, apporteur et manager.' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setRenvoyantVoucherId(null)
+  }
   const [notes, setNotes] = useState(initialNotes)
   const [loading, setLoading] = useState(false)
   const [showVisiteDialog, setShowVisiteDialog] = useState(false)
@@ -517,23 +529,45 @@ export function ProspectDetailClient({
             </CardContent>
           </Card>
 
-          {/* Vouchers */}
+          {/* Visites Confirmées — Vouchers */}
           {vouchers.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-[#1A3C6E] flex items-center gap-2"><Ticket className="w-4 h-4" /> Vouchers</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-[#1A3C6E] flex items-center gap-2"><Ticket className="w-4 h-4" /> Visites confirmées</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {vouchers.map(v => (
-                    <div key={v.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                      <div>
-                        <p className="text-sm font-medium">{v.numero_voucher}</p>
-                        <p className="text-xs text-gray-400">
-                          {formatDate(v.date_visite)} à {v.heure_visite?.slice(0,5)}
-                        </p>
+                    <div key={v.id} className="border rounded-xl p-4 space-y-3 bg-amber-50/50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm font-bold text-[#1A3C6E]">{v.numero_voucher || '—'}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className={cn('text-xs px-2 py-0.5 rounded-full', VOUCHER_STATUT_COLORS[v.statut])}>
+                              {VOUCHER_STATUT_LABELS[v.statut]}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-[#C8973A] border-[#C8973A] hover:bg-amber-50 text-xs"
+                          disabled={renvoyantVoucherId === v.id}
+                          onClick={() => handleRenvoyerVoucher(v.id)}
+                        >
+                          {renvoyantVoucherId === v.id ? '...' : '📨 Renvoyer'}
+                        </Button>
                       </div>
-                      <span className={cn('text-xs px-2 py-1 rounded-full', VOUCHER_STATUT_COLORS[v.statut])}>
-                        {VOUCHER_STATUT_LABELS[v.statut]}
-                      </span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white rounded-lg p-2 border">
+                          <p className="text-gray-400 mb-0.5">📅 Date de visite</p>
+                          <p className="font-semibold text-gray-700">{formatDate(v.date_visite)}</p>
+                          <p className="text-amber-600">🌅 Coucher de soleil — {v.heure_visite?.slice(0,5)} (3H)</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border">
+                          <p className="text-gray-400 mb-0.5">📤 Dernier envoi</p>
+                          <p className="font-semibold text-gray-700">{formatDate(v.created_at)}</p>
+                          <p className="text-gray-400">{formatDateTime(v.created_at).split(' ').slice(1).join(' ')}</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

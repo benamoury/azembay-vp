@@ -12,7 +12,7 @@ import { Users, Home, FileText, Plus, Trash2, Pencil, Check, X, Upload, Calendar
 import { creerUtilisateur, modifierUtilisateur, supprimerUtilisateur, modifierStatutLot, modifierPrixLot } from '@/actions/prospects'
 import { uploadDocument, toggleDocumentActif, supprimerDocument } from '@/actions/documents'
 import { creerWeekend, supprimerWeekend, creerJourDisponible, supprimerJourDisponible, toggleJourActif } from '@/actions/planning'
-import { creerSourceRemuneree, supprimerSourceRemuneree } from '@/actions/prospects'
+import { creerSourceRemuneree, supprimerSourceRemuneree, creerAcquereur, supprimerAcquereur, getAcquereurs } from '@/actions/prospects'
 import { formatCurrency } from '@/lib/utils'
 import type { Profile, Lot, Document } from '@/lib/types'
 
@@ -160,6 +160,39 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
 
   // SOURCES REMUNEREES
   const [sources, setSources] = useState<any[]>(initSources || [])
+  const [acquereurs, setAcquereurs] = useState<any[]>([])
+
+  // Charger les acquéreurs (appelé une fois au premier render via useEffect pattern)
+  const [acqueureursLoaded, setAcqueureursLoaded] = useState(false)
+  if (!acqueureursLoaded) {
+    setAcqueureursLoaded(true)
+    getAcquereurs().then((data: any[]) => setAcquereurs(data))
+  }
+  const [loadingAcquereurs, setLoadingAcquereurs] = useState(false)
+  const [newAcquereur, setNewAcquereur] = useState({ nom: '', prenom: '', email: '', telephone: '' })
+  const [addingAcquereur, setAddingAcquereur] = useState(false)
+
+  async function handleCreerAcquereur() {
+    if (!newAcquereur.nom.trim() || !newAcquereur.prenom.trim()) return
+    setAddingAcquereur(true)
+    const res = await creerAcquereur({ ...newAcquereur })
+    if (res.success && res.acquereur) {
+      setAcquereurs(prev => [...prev, res.acquereur])
+      setNewAcquereur({ nom: '', prenom: '', email: '', telephone: '' })
+      toast({ title: '✓ Acquéreur ajouté' })
+    } else {
+      toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+    }
+    setAddingAcquereur(false)
+  }
+
+  async function handleSupprimerAcquereur(id: string) {
+    const res = await supprimerAcquereur(id)
+    if (res.success) {
+      setAcquereurs(prev => prev.filter((a: any) => a.id !== id))
+      toast({ title: 'Acquéreur supprimé' })
+    }
+  }
   const [newSource, setNewSource] = useState({ nom: '', description: '' })
   const [addingSource, setAddingSource] = useState(false)
 
@@ -313,7 +346,8 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
           <TabsTrigger value="lots"><Home className="w-4 h-4 mr-2" />Lots</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="w-4 h-4 mr-2" />Documents</TabsTrigger>
           <TabsTrigger value="planning"><Calendar className="w-4 h-4 mr-2" />Planning</TabsTrigger>
-          <TabsTrigger value="sources"><Tag className="w-4 h-4 mr-2" />Sources</TabsTrigger>
+          <TabsTrigger value="sources"><Tag className="w-4 h-4 mr-2" />Sources rémunérées</TabsTrigger>
+          <TabsTrigger value="acquereurs"><Users className="w-4 h-4 mr-2" />Acquéreurs</TabsTrigger>
         </TabsList>
 
         {/* UTILISATEURS */}
@@ -764,6 +798,76 @@ export function ParametrageClient({ utilisateurs: initUsers, lots: initLots, doc
                         {s.description && <p className="text-xs text-gray-500">{s.description}</p>}
                       </div>
                       <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerSource(s.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ACQUÉREURS */}
+        <TabsContent value="acquereurs">
+          <div className="max-w-xl space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+              <strong>Sources acquéreurs :</strong> Un acquéreur est un client qui apporte d'autres prospects. La commission est partagée entre l'apporteur et l'acquéreur selon les conditions convenues.
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Ajouter un acquéreur</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Prénom *</Label>
+                    <Input value={newAcquereur.prenom} onChange={e => setNewAcquereur(a => ({ ...a, prenom: e.target.value }))} placeholder="Prénom" />
+                  </div>
+                  <div>
+                    <Label>Nom *</Label>
+                    <Input value={newAcquereur.nom} onChange={e => setNewAcquereur(a => ({ ...a, nom: e.target.value }))} placeholder="Nom" />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={newAcquereur.email} onChange={e => setNewAcquereur(a => ({ ...a, email: e.target.value }))} placeholder="email@exemple.com" />
+                  </div>
+                  <div>
+                    <Label>Téléphone</Label>
+                    <Input value={newAcquereur.telephone} onChange={e => setNewAcquereur(a => ({ ...a, telephone: e.target.value }))} placeholder="+212..." />
+                  </div>
+                </div>
+                <Button onClick={handleCreerAcquereur} disabled={addingAcquereur || !newAcquereur.nom.trim() || !newAcquereur.prenom.trim()} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />{addingAcquereur ? 'Ajout...' : "Ajouter l'acquéreur"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Acquéreurs enregistrés ({acquereurs.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {acquereurs.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-4">Aucun acquéreur enregistré.</p>
+                )}
+                <div className="space-y-2">
+                  {acquereurs.map(a => (
+                    <div key={a.id} className="flex items-center justify-between py-3 px-3 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#1A3C6E]/10 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-bold text-[#1A3C6E]">{a.prenom?.[0]}{a.nom?.[0]}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{a.prenom} {a.nom}</p>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {a.email && <p className="text-xs text-gray-500">✉️ {a.email}</p>}
+                            {a.telephone && <p className="text-xs text-gray-500">📞 {a.telephone}</p>}
+                          </div>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleSupprimerAcquereur(a.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

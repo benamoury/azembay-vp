@@ -743,3 +743,47 @@ export async function modifierProspect(prospectId: string, data: {
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
+
+// ─── Renvoyer voucher ─────────────────────────────────────────────────────────
+
+export async function renvoyerVoucher(voucherId: string) {
+  const admin = createAdminClient()
+
+  const { data: voucher, error } = await admin
+    .from('vouchers')
+    .select('*, prospect:prospects(nom,prenom,email), apporteur:profiles!apporteur_id(nom,prenom,email,telephone), manager:profiles!manager_id(nom,prenom,email)')
+    .eq('id', voucherId)
+    .single()
+
+  if (error || !voucher) return { success: false, error: error?.message || 'Voucher introuvable' }
+
+  const prospect = voucher.prospect as { nom: string; prenom: string; email: string } | null
+  const apporteur = (Array.isArray(voucher.apporteur) ? voucher.apporteur[0] : voucher.apporteur) as { nom: string; prenom: string; email: string; telephone?: string } | null
+  const manager = (Array.isArray(voucher.manager) ? voucher.manager[0] : voucher.manager) as { nom: string; prenom: string; email: string } | null
+
+  if (!prospect || !apporteur || !manager) return { success: false, error: 'Données incomplètes' }
+
+  const dateFormatted = new Date(voucher.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  })
+
+  const emailData = buildEmailVoucher({
+    prospect: { nom: prospect.nom, prenom: prospect.prenom, email: prospect.email },
+    apporteur: { nom: apporteur.nom, prenom: apporteur.prenom, telephone: apporteur.telephone },
+    manager: { nom: manager.nom, prenom: manager.prenom },
+    date_visite: dateFormatted,
+    heure_visite: voucher.heure_visite,
+    numero_voucher: voucher.numero_voucher,
+  })
+
+  const recipients: string[] = []
+  if (prospect.email) recipients.push(prospect.email)
+  if (apporteur.email) recipients.push(apporteur.email)
+  if (manager.email) recipients.push(manager.email)
+
+  if (recipients.length > 0) {
+    await sendEmail({ to: recipients, ...emailData })
+  }
+
+  return { success: true }
+}

@@ -32,6 +32,7 @@ export default async function MonProspectDetailPage({ params }: { params: { id: 
     { data: prospectLots },
     { data: lotsDisponibles },
     { data: apporteurProfile },
+    { data: vouchers },
   ] = await Promise.all([
     admin.from('visites').select('*, jour:jours_disponibles(date,prioritaire)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('sejours').select('*, stock_hebergement:stock_hebergement(reference)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
@@ -42,6 +43,7 @@ export default async function MonProspectDetailPage({ params }: { params: { id: 
     admin.from('prospect_lots').select('*, lot:lots(*)').eq('prospect_id', params.id),
     admin.from('lots').select('id, reference, type, prix_individuel, prix_bloc, statut').eq('statut', 'disponible').order('reference'),
     admin.from('profiles').select('quota_sejours_utilise, quota_sejours_max').eq('id', user.id).single(),
+    admin.from('vouchers').select('*').eq('prospect_id', params.id).order('created_at', { ascending: false }),
   ])
 
   const countMap: Record<string, number> = {}
@@ -63,6 +65,7 @@ export default async function MonProspectDetailPage({ params }: { params: { id: 
         apporteurNom={`${profile.prenom} ${profile.nom}`}
         quotaUtilise={apporteurProfile?.quota_sejours_utilise ?? 0}
         quotaMax={apporteurProfile?.quota_sejours_max ?? 6}
+        vouchers={vouchers || []}
       />
     </AppLayout>
   )

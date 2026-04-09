@@ -11,13 +11,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { cn, formatDate, formatCurrency, PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS, TEMPERATURE_LABELS, TEMPERATURE_COLORS } from '@/lib/utils'
-import type { Prospect, ClientNote, JourDisponible } from '@/lib/types'
+import type { Prospect, ClientNote, JourDisponible, Voucher } from '@/lib/types'
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, Hotel, MessageSquare, Flame, Home, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
 import { soumettreSejourDemande } from '@/actions/sejours'
-import { mettreEnListeAttente, closerProspect, reactiverProspect, modifierProspect } from '@/actions/prospects'
+import { mettreEnListeAttente, closerProspect, reactiverProspect, modifierProspect, renvoyerVoucher } from '@/actions/prospects'
 import { ajouterLotProspect, retirerLotProspect } from '@/actions/prospects'
 
 type VisiteWithJour = {
@@ -100,6 +100,7 @@ interface Props {
   prospect: Prospect & { lot_cible?: { reference: string; type: string } | null }
   visites: VisiteWithJour[]
   sejours: SejourWithStock[]
+  vouchers: Voucher[]
   notes: NoteWithAuteur[]
   jours: (JourDisponible & { nb_visites: number })[]
   weekends: Weekend[]
@@ -114,6 +115,7 @@ interface Props {
 export function MonProspectDetailClient({
   prospect: initialProspect,
   visites: initialVisites,
+  vouchers: initialVouchers,
   sejours: initialSejours,
   notes: initialNotes,
   jours,
@@ -151,6 +153,18 @@ export function MonProspectDetailClient({
 
   const [noteText, setNoteText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [renvoyantVoucherId, setRenvoyantVoucherId] = useState<string | null>(null)
+
+  async function handleRenvoyerVoucher(voucherId: string) {
+    setRenvoyantVoucherId(voucherId)
+    const result = await renvoyerVoucher(voucherId)
+    if (result.success) {
+      toast({ title: '✓ Voucher renvoyé', description: 'Email envoyé au prospect, apporteur et manager.' })
+    } else {
+      toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
+    }
+    setRenvoyantVoucherId(null)
+  }
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editData, setEditData] = useState({
     nom: prospect.nom || '',
@@ -465,20 +479,46 @@ export function MonProspectDetailClient({
             <p className="text-sm text-gray-400">Aucune visite planifiée.</p>
           ) : (
             <div className="space-y-2">
-              {visites.map(v => (
-                <div key={v.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {new Date(v.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                      {v.heure_visite && ` — ${v.heure_visite.slice(0, 5)}`}
-                    </p>
-                    {v.notes_apporteur && <p className="text-xs text-gray-400">{v.notes_apporteur}</p>}
+              {visites.map(v => {
+                const voucher = initialVouchers.find(vch => {
+                  const vDate = vch.date_visite?.slice(0,10)
+                  const visitDate = v.date_visite?.slice(0,10)
+                  return vDate === visitDate
+                })
+                return (
+                  <div key={v.id} className="border rounded-xl p-3 space-y-2 bg-amber-50/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {new Date(v.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </p>
+                        <p className="text-xs text-amber-600 mt-0.5">🌅 Coucher de soleil — 17h00 (3H)</p>
+                        {v.notes_apporteur && <p className="text-xs text-gray-400 mt-0.5">{v.notes_apporteur}</p>}
+                      </div>
+                      <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', VISITE_COLORS[v.statut] ?? 'bg-gray-100 text-gray-600')}>
+                        {VISITE_STATUT[v.statut] ?? v.statut}
+                      </span>
+                    </div>
+                    {voucher && (
+                      <div className="bg-white rounded-lg p-2 border text-xs flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-[#1A3C6E]">🎟️ {voucher.numero_voucher || 'Voucher émis'}</p>
+                          <p className="text-gray-400 mt-0.5">📤 Envoyé le {new Date(voucher.created_at).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-[#C8973A] border-[#C8973A] text-xs h-7"
+                          disabled={renvoyantVoucherId === voucher.id}
+                          onClick={() => handleRenvoyerVoucher(voucher.id)}
+                        >
+                          {renvoyantVoucherId === voucher.id ? '...' : '📨 Renvoyer'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', VISITE_COLORS[v.statut] ?? 'bg-gray-100 text-gray-600')}>
-                    {VISITE_STATUT[v.statut] ?? v.statut}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

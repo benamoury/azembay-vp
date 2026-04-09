@@ -26,12 +26,15 @@ export default async function DashboardPage() {
   const admin = createAdminClient()
 
   if (role === 'direction') {
-    const [{ data: lots }, { data: prospects }, { data: ventes }, { data: sejours }, { data: factures }] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0]
+    const [{ data: lots }, { data: prospects }, { data: ventes }, { data: sejours }, { data: factures }, { data: prochainesVisites }, { data: prochainsWeekends }] = await Promise.all([
       admin.from('lots').select('*').order('reference'),
       admin.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role), lot_cible:lots(*)').order('created_at', { ascending: false }),
       admin.from('ventes').select('*, prospect:prospects(nom,prenom), lot:lots(reference)').order('created_at', { ascending: false }),
       admin.from('sejours').select('*, prospect:prospects(nom,prenom,apporteur_id)').order('created_at', { ascending: false }),
       admin.from('factures').select('montant_ttc,statut'),
+      admin.from('visites').select('*, prospect:prospects(nom,prenom,telephone), apporteur:profiles!apporteur_id(nom,prenom)').neq('statut', 'annulee').gte('date_visite', today).order('date_visite').limit(10),
+      admin.from('weekends_actives').select('*').in('statut', ['ouvert', 'valide']).gte('date_vendredi', today).order('date_vendredi').limit(6),
     ])
 
     return (
@@ -42,6 +45,8 @@ export default async function DashboardPage() {
           ventes={ventes || []}
           sejours={sejours || []}
           factures={factures || []}
+          prochainesVisites={prochainesVisites || []}
+          prochainsWeekends={prochainsWeekends || []}
         />
       </AppLayout>
     )
@@ -51,12 +56,14 @@ export default async function DashboardPage() {
     const today = new Date().toISOString().split('T')[0]
     const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
-    const [{ data: prospects }, { data: visitesAujourdhui }, { data: liens }, { data: sejours }, { data: nonQualifies }] = await Promise.all([
+    const [{ data: prospects }, { data: visitesAujourdhui }, { data: liens }, { data: sejours }, { data: nonQualifies }, { data: prochainesVisites }, { data: prochainsWeekends }] = await Promise.all([
       admin.from('prospects').select('*, apporteur:profiles!apporteur_id(id,nom,prenom,role)').order('created_at', { ascending: false }),
       admin.from('visites').select('*, prospect:prospects(nom,prenom,email,telephone)').eq('date_visite', today).neq('statut', 'annulee').order('heure_visite'),
       admin.from('liens_securises').select('*, prospect:prospects(nom,prenom), document:documents(nom)').order('created_at', { ascending: false }),
       admin.from('sejours').select('*, prospect:prospects(nom,prenom)').in('statut', ['demande', 'confirme', 'no_show']).order('created_at', { ascending: false }),
       admin.from('prospects').select('id,nom,prenom,created_at').eq('statut', 'soumis').lt('created_at', cutoff48h),
+      admin.from('visites').select('*, prospect:prospects(nom,prenom,telephone), apporteur:profiles!apporteur_id(nom,prenom)').neq('statut', 'annulee').gte('date_visite', today).order('date_visite').limit(10),
+      admin.from('weekends_actives').select('*').in('statut', ['ouvert', 'valide']).gte('date_vendredi', today).order('date_vendredi').limit(6),
     ])
 
     return (
@@ -67,13 +74,16 @@ export default async function DashboardPage() {
           liens={liens || []}
           sejours={sejours || []}
           nonQualifies={nonQualifies || []}
+          prochainesVisites={prochainesVisites || []}
+          prochainsWeekends={prochainsWeekends || []}
         />
       </AppLayout>
     )
   }
 
   // Apporteur
-  const [{ data: prospects }, { data: ventes }, { data: sejours }, { data: visites }, { data: apporteurProfile }, { data: lots }] = await Promise.all([
+  const apporteurToday = new Date().toISOString().split('T')[0]
+  const [{ data: prospects }, { data: ventes }, { data: sejours }, { data: visites }, { data: apporteurProfile }, { data: lots }, { data: prochainesVisites }, { data: prochainsWeekends }] = await Promise.all([
     supabase.from('prospects').select('*, lot_cible:lots(*)').eq('apporteur_id', user.id).order('created_at', { ascending: false }),
     supabase.from('ventes').select('*').eq('apporteur_id', user.id),
     admin.from('sejours')
@@ -85,6 +95,14 @@ export default async function DashboardPage() {
       .eq('prospects.apporteur_id', user.id),
     admin.from('profiles').select('quota_sejours_utilise,quota_sejours_max').eq('id', user.id).single(),
     admin.from('lots').select('id,reference,type,prix_individuel,prix_bloc,statut').eq('statut', 'disponible').order('reference'),
+    admin.from('visites')
+      .select('*, prospect:prospects!inner(nom,prenom,apporteur_id)')
+      .eq('prospects.apporteur_id', user.id)
+      .neq('statut', 'annulee')
+      .gte('date_visite', apporteurToday)
+      .order('date_visite')
+      .limit(5),
+    admin.from('weekends_actives').select('*').in('statut', ['ouvert', 'valide']).gte('date_vendredi', apporteurToday).order('date_vendredi').limit(4),
   ])
 
   return (
@@ -99,6 +117,8 @@ export default async function DashboardPage() {
         quotaMax={apporteurProfile?.quota_sejours_max ?? 6}
         nom={profile.nom}
         prenom={profile.prenom}
+        prochainesVisites={prochainesVisites || []}
+        prochainsWeekends={prochainsWeekends || []}
       />
     </AppLayout>
   )
