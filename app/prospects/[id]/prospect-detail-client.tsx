@@ -560,7 +560,7 @@ export function ProspectDetailClient({
                         <div className="bg-white rounded-lg p-2 border">
                           <p className="text-gray-400 mb-0.5">📅 Date de visite</p>
                           <p className="font-semibold text-gray-700">{formatDate(v.date_visite)}</p>
-                          <p className="text-amber-600">🌅 Coucher de soleil — {v.heure_visite?.slice(0,5)} (3H)</p>
+                          <p className="text-amber-600">🌅 17h (prévoir 3h avant coucher de soleil)</p>
                         </div>
                         <div className="bg-white rounded-lg p-2 border">
                           <p className="text-gray-400 mb-0.5">📤 Dernier envoi</p>
@@ -857,8 +857,8 @@ export function ProspectDetailClient({
               <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <span className="text-2xl">🌅</span>
                 <div>
-                  <p className="font-semibold text-amber-800">Coucher de soleil — 3H</p>
-                  <p className="text-xs text-amber-600">Départ 17h00 · Durée 3 heures · Confirmez votre présence</p>
+                  <p className="font-semibold text-amber-800">17h (prévoir 3h avant coucher de soleil)</p>
+                  <p className="text-xs text-amber-600">17h — prévoir 3h · Confirmez votre présence</p>
                 </div>
               </div>
             </div>

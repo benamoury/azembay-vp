@@ -251,7 +251,7 @@ function ProchainesVisitesWidget({ visites, weekends, roleLabel }: {
                       <p className={cn("text-xs font-semibold", isToday ? "text-amber-700" : "text-gray-600")}>
                         {isToday ? "Aujourd'hui" : date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
                       </p>
-                      <p className="text-xs text-amber-600">🌅 17h00</p>
+                      <p className="text-xs text-amber-600">🌅 17h (prévoir 3h)</p>
                     </div>
                   </div>
                 )

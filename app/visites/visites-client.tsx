@@ -87,7 +87,7 @@ function DateTooltip({ date, visiteurs }: {
           <div className="flex items-center gap-2 mb-3 pb-2 border-b">
             <span className="text-sm font-bold text-[#1A3C6E] capitalize">{dateFormatted}</span>
             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-              🌅 17h00 · {visiteurs.length} visite{visiteurs.length > 1 ? 's' : ''}
+              🌅 17h (prévoir 3h) · {visiteurs.length} visite{visiteurs.length > 1 ? 's' : ''}
             </span>
           </div>
           <div className="space-y-2">
@@ -218,7 +218,7 @@ export function VisitesClient({ visites: initialVisites, userId }: {
                       {isToday ? "📍 Aujourd'hui" : dateFormatted}
                     </p>
                     <p className="text-xs text-amber-600 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> 🌅 Coucher de soleil — 17h00 (3H)
+                      <Clock className="w-3 h-3" /> 🌅 17h (prévoir 3h avant coucher de soleil)
                       · {visitsDuJour.length} visite{visitsDuJour.length > 1 ? 's' : ''}
                     </p>
                   </div>

@@ -492,7 +492,7 @@ export function MonProspectDetailClient({
                         <p className="text-sm font-medium">
                           {new Date(v.date_visite + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </p>
-                        <p className="text-xs text-amber-600 mt-0.5">🌅 Coucher de soleil — 17h00 (3H)</p>
+                        <p className="text-xs text-amber-600 mt-0.5">🌅 17h (prévoir 3h avant coucher de soleil)</p>
                         {v.notes_apporteur && <p className="text-xs text-gray-400 mt-0.5">{v.notes_apporteur}</p>}
                       </div>
                       <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', VISITE_COLORS[v.statut] ?? 'bg-gray-100 text-gray-600')}>
@@ -629,8 +629,8 @@ export function MonProspectDetailClient({
               <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <span className="text-2xl">🌅</span>
                 <div>
-                  <p className="font-semibold text-amber-800">Coucher de soleil — 3H</p>
-                  <p className="text-xs text-amber-600">Départ 17h00 · Durée 3 heures · Créneau unique</p>
+                  <p className="font-semibold text-amber-800">17h (prévoir 3h avant coucher de soleil)</p>
+                  <p className="text-xs text-amber-600">Prévoir 3h — créneau coucher de soleil</p>
                 </div>
               </div>
             </div>

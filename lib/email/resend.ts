@@ -470,7 +470,7 @@ export function buildEmailVoucher(data: {
         <span style="background:#C8973A;color:white;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;letter-spacing:1px;">VOUCHER VISITE CONFIRMÉ</span>
       </div>
       <h2 style="color:#1A3C6E;margin:0 0 16px;">Bonjour ${data.prospect.prenom},</h2>
-      <p style="color:#374151;">Votre visite <strong>Golden Hour — Coucher de Soleil (3H)</strong> est confirmée. Merci de vous munir de ce voucher et d'une pièce d'identité à votre arrivée.</p>
+      <p style="color:#374151;">Votre visite est confirmée. Rendez-vous à <strong>17h (prévoir 3h avant coucher de soleil)</strong>. Merci de vous munir de ce voucher et d'une pièce d'identité à votre arrivée.</p>
 
       <div style="background:white;border:2px solid #C8973A;border-radius:12px;padding:24px;margin:20px 0;">
         <div style="text-align:center;border-bottom:1px solid #f0e6d3;padding-bottom:16px;margin-bottom:16px;">
@@ -484,7 +484,7 @@ export function buildEmailVoucher(data: {
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6B7280;font-size:13px;">🌅 Créneau</td>
-            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">Coucher de Soleil — ${heure} (3H)</td>
+            <td style="padding:8px 0;font-weight:600;color:#1A3C6E;">17h (prévoir 3h avant coucher de soleil)</td>
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6B7280;font-size:13px;">👤 Votre nom</td>
