@@ -49,6 +49,8 @@ export function ManagerDashboard({ prospects, visitesAujourdhui, liens, sejours,
         <p className="text-sm text-gray-500 mt-1">Activité en temps réel</p>
       </div>
 
+      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
+
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">
         {[

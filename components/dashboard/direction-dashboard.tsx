@@ -70,11 +70,12 @@ export function DirectionDashboard({ lots, prospects, ventes, sejours, factures,
 
   return (
     <div className="space-y-6">
-      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
       <div>
         <h1 className="text-2xl font-bold text-[#1A3C6E]">Tableau de bord Direction</h1>
         <p className="text-sm text-gray-500 mt-1">Vue d'ensemble — Azembay RIPT 1</p>
       </div>
+
+      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-4 gap-4">

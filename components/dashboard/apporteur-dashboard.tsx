@@ -55,11 +55,12 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDi
 
   return (
     <div className="space-y-6">
-      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
       <div>
         <h1 className="text-2xl font-bold text-[#1A3C6E]">Bonjour, {prenom} !</h1>
         <p className="text-sm text-gray-500 mt-1">Votre tableau de bord — Golden Hour 2026</p>
       </div>
+
+      <ProchainesVisitesWidget visites={prochainesVisites} weekends={prochainsWeekends} />
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">

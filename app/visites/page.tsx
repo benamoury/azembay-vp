@@ -15,7 +15,7 @@ export default async function VisitesPage() {
 
   const { data: visites } = await admin
     .from('visites')
-    .select('*, prospect:prospects(nom,prenom,email,telephone,budget_estime,apporteur_id), jour:jours_disponibles(date,prioritaire)')
+    .select('*, prospect:prospects(nom,prenom,email,telephone,budget_estime, apporteur:profiles!apporteur_id(nom,prenom)), apporteur:profiles!apporteur_id(nom,prenom), jour:jours_disponibles(date,prioritaire)')
     .neq('statut', 'annulee')
     .order('date_visite', { ascending: true })
 
