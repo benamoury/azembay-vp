@@ -39,14 +39,15 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
     e.preventDefault()
     setLoading(true)
 
+    // Exclure source_contact (champ UI uniquement, stocké dans notes)
+    const { source_contact, lot_cible_id: lcid, budget_estime: be, ...formRest } = form
     const payload = {
-      ...form,
+      ...formRest,
       apporteur_id: apporteurId,
-      budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
-      reference_personnelle: form.reference_personnelle,
-      notes: [form.source_contact ? `Source: ${form.source_contact}` : '', form.notes].filter(Boolean).join(' | ') || undefined,
+      budget_estime: be ? parseFloat(be) : undefined,
+      notes: [source_contact ? `Source: ${source_contact}` : '', form.notes].filter(Boolean).join(' | ') || undefined,
       valeur_ajoutee: form.valeur_ajoutee || undefined,
-      lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
+      lot_cible_id: (lcid && lcid !== 'none') ? lcid : undefined,
     }
 
     const result = await soumettreProspect(payload as Parameters<typeof soumettreProspect>[0])
