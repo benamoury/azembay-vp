@@ -288,15 +288,13 @@ export async function creerVoucher(data: {
         numero_voucher: voucher.numero_voucher,
       })
 
-      // Envoyer aux 3 destinataires
-      const recipients: string[] = []
-      if (prospect.email) recipients.push(prospect.email)
-      if (apporteur.email) recipients.push(apporteur.email)
-      if (manager.email) recipients.push(manager.email)
-
-      if (recipients.length > 0) {
-        await sendEmail({ to: recipients, ...emailData })
-      }
+      // Envoyer séparément à chaque destinataire + responsable technique en CC
+      const TECH_EMAIL = 'boussors@earth.ma'
+      const sends: Promise<any>[] = []
+      if (prospect.email) sends.push(sendEmail({ to: prospect.email, cc: TECH_EMAIL, ...emailData }))
+      if (apporteur.email && apporteur.email !== prospect.email) sends.push(sendEmail({ to: apporteur.email, cc: TECH_EMAIL, ...emailData }))
+      if (manager.email && manager.email !== apporteur.email && manager.email !== prospect.email) sends.push(sendEmail({ to: manager.email, cc: TECH_EMAIL, ...emailData }))
+      await Promise.all(sends)
     }
   }
 
@@ -781,9 +779,13 @@ export async function renvoyerVoucher(voucherId: string) {
   if (apporteur.email) recipients.push(apporteur.email)
   if (manager.email) recipients.push(manager.email)
 
-  if (recipients.length > 0) {
-    await sendEmail({ to: recipients, ...emailData })
-  }
+  // Envoyer séparément à chaque destinataire + responsable technique en CC
+  const TECH_EMAIL_R = 'boussors@earth.ma'
+  const sendsR: Promise<any>[] = []
+  if (prospect.email) sendsR.push(sendEmail({ to: prospect.email, cc: TECH_EMAIL_R, ...emailData }))
+  if (apporteur.email && apporteur.email !== prospect.email) sendsR.push(sendEmail({ to: apporteur.email, cc: TECH_EMAIL_R, ...emailData }))
+  if (manager.email && manager.email !== apporteur.email && manager.email !== prospect.email) sendsR.push(sendEmail({ to: manager.email, cc: TECH_EMAIL_R, ...emailData }))
+  await Promise.all(sendsR)
 
   return { success: true }
 }

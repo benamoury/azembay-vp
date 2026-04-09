@@ -46,11 +46,13 @@ function row(label: string, value: string) {
 
 export async function sendEmail({
   to,
+  cc,
   subject,
   html,
   attachments,
 }: {
   to: string | string[]
+  cc?: string | string[]
   subject: string
   html: string
   attachments?: { filename: string; content: Buffer }[]
@@ -59,6 +61,7 @@ export async function sendEmail({
     const { data, error } = await getResend().emails.send({
       from: FROM,
       to: Array.isArray(to) ? to : [to],
+      ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
       subject,
       html,
       attachments,
