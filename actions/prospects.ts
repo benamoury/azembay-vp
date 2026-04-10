@@ -405,10 +405,15 @@ export async function creerUtilisateur(data: {
 
   if (error) return { success: false, error: error.message }
 
-  // Profile is auto-created by trigger, but update telephone if provided
-  if (data.telephone) {
-    await admin.from('profiles').update({ telephone: data.telephone }).eq('id', authUser.user.id)
-  }
+  // Upsert profile — ne pas dépendre du trigger seul
+  await admin.from('profiles').upsert({
+    id: authUser.user.id,
+    email: data.email,
+    nom: data.nom,
+    prenom: data.prenom,
+    role: data.role,
+    telephone: data.telephone || null,
+  }, { onConflict: 'id' })
 
   // Send welcome email
   await sendEmail({
