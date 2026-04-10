@@ -121,8 +121,10 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
               <Select value={form.profil} onValueChange={v => set('profil', v)}>
                 <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="investisseur_pur">Investisseur pur</SelectItem>
-                  <SelectItem value="residence_secondaire">Résidence secondaire</SelectItem>
+                  <SelectItem value="investisseur_pur">Investisseur pur (rendement)</SelectItem>
+                  <SelectItem value="residence_secondaire">Résidence secondaire (usage)</SelectItem>
+                  <SelectItem value="mixte">Mixte (usage + rendement)</SelectItem>
+                  <SelectItem value="bloc">Bloc (achat multiple)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -192,11 +194,13 @@ export function SoumettreClient({ lots, apporteurId }: SoumettreClientProps) {
               <Select value={form.source_contact} onValueChange={v => set('source_contact', v)}>
                 <SelectTrigger><SelectValue placeholder="Comment ce prospect a-t-il été identifié ?" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Réseau personnel">Réseau personnel</SelectItem>
-                  <SelectItem value="Recommandation client">Recommandation client</SelectItem>
-                  <SelectItem value="Événement professionnel">Événement professionnel</SelectItem>
+                  <SelectItem value="Réseau personnel direct">Réseau personnel direct</SelectItem>
+                  <SelectItem value="Recommandation d'un client Azembay">Recommandation client Azembay</SelectItem>
+                  <SelectItem value="Réseau pro (avocat, notaire, banquier)">Réseau pro (avocat, notaire, banquier)</SelectItem>
+                  <SelectItem value="Événement / soirée privée">Événement / soirée privée</SelectItem>
                   <SelectItem value="Réseaux sociaux">Réseaux sociaux</SelectItem>
-                  <SelectItem value="Rencontre directe">Rencontre directe</SelectItem>
+                  <SelectItem value="Club d'investisseurs">Club d&apos;investisseurs</SelectItem>
+                  <SelectItem value="Acquéreur existant Azembay">Acquéreur existant Azembay</SelectItem>
                   <SelectItem value="Autre">Autre</SelectItem>
                 </SelectContent>
               </Select>

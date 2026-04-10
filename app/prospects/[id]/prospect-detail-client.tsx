@@ -40,6 +40,7 @@ interface Props {
   jours: JourDisponible[]
   notes: ClientNote[]
   weekends: Weekend[]
+  visitesProspect: { id: string; date_visite: string; heure_visite?: string; statut: string }[]
   managerId: string
   managerNom: string
   role: UserRole
@@ -64,6 +65,7 @@ export function ProspectDetailClient({
   jours,
   notes: initialNotes,
   weekends,
+  visitesProspect = [],
   managerId,
   role,
 }: Props) {
@@ -149,10 +151,21 @@ export function ProspectDetailClient({
     setLoading(true)
     const result = await ajouterNote({ prospect_id: prospect.id, contenu: noteText, temperature: noteTemp })
     if (result.success) {
+      // Mettre à jour le state local immédiatement sans reload
+      const newNote = {
+        id: result.noteId || `temp-${Date.now()}`,
+        prospect_id: prospect.id,
+        auteur_id: '',
+        contenu: noteText,
+        temperature: noteTemp,
+        created_at: new Date().toISOString(),
+        auteur: result.auteur || null,
+      }
+      setNotes(prev => [newNote as any, ...prev])
+      if (noteTemp) setProspect(p => ({ ...p, temperature: noteTemp }))
       setNoteText('')
       setNoteTemp(undefined)
-      router.refresh()
-      toast({ title: 'Note ajoutée' })
+      toast({ title: '✓ Note ajoutée' })
     } else {
       toast({ title: 'Erreur', description: result.error, variant: 'destructive' })
     }
@@ -704,7 +717,7 @@ export function ProspectDetailClient({
               {/* Étape 3 → Voucher + Marquer visite réalisée — Manager uniquement */}
               {prospect.statut === 'visite_programmee' && role === 'manager' && (
                 <div className="space-y-2">
-                  <Button className="w-full bg-[#C8973A] hover:bg-[#b07e2e]" onClick={() => setShowVoucherDialog(true)} disabled={loading}>
+                  <Button className="w-full bg-[#C8973A] hover:bg-[#b07e2e]" onClick={() => { const v = visitesProspect[0]; if (v) setVoucherData(p => ({ ...p, date_visite: v.date_visite, heure_visite: v.heure_visite || p.heure_visite })); setShowVoucherDialog(true); }} disabled={loading}>
                     <Ticket className="w-4 h-4 mr-2" /> Émettre le voucher visite
                   </Button>
                   <Button className="w-full" onClick={handleAvancer} disabled={loading}>

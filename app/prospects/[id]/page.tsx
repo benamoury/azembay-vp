@@ -21,7 +21,7 @@ export default async function ProspectDetailPage({ params }: { params: { id: str
 
   if (!prospect) notFound()
 
-  const [{ data: vouchers }, { data: formulaires }, { data: sejours }, { data: lots }, { data: jours }, { data: visiteCounts }, { data: notes }, { data: weekends }] = await Promise.all([
+  const [{ data: vouchers }, { data: formulaires }, { data: sejours }, { data: lots }, { data: jours }, { data: visiteCounts }, { data: notes }, { data: weekends }, { data: visitesProspect }] = await Promise.all([
     admin.from('vouchers').select('*').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('formulaires').select('*, lot:lots(*)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('sejours').select('*, lot_assigne:lots(reference)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
@@ -30,6 +30,7 @@ export default async function ProspectDetailPage({ params }: { params: { id: str
     admin.from('visites').select('jour_id').neq('statut', 'annulee'),
     admin.from('client_notes').select('*, auteur:profiles!auteur_id(prenom,nom)').eq('prospect_id', params.id).order('created_at', { ascending: false }),
     admin.from('weekends_actives').select('*').in('statut', ['ouvert', 'validation']).gte('date_samedi', new Date().toISOString().split('T')[0]).order('date_vendredi'),
+    admin.from('visites').select('id,date_visite,heure_visite,statut').eq('prospect_id', params.id).neq('statut', 'annulee').order('created_at', { ascending: false }).limit(1),
   ])
 
   const countMap: Record<string, number> = {}
@@ -49,6 +50,7 @@ export default async function ProspectDetailPage({ params }: { params: { id: str
         jours={joursWithCounts}
         notes={notes || []}
         weekends={weekends || []}
+        visitesProspect={visitesProspect || []}
         managerId={user.id}
         managerNom={managerProfile ? `${managerProfile.prenom} ${managerProfile.nom}` : ''}
         role={profile.role}

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { formatCurrency, PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS } from '@/lib/utils'
+import { formatCurrency, PROSPECT_STATUT_LABELS, PROSPECT_STATUT_COLORS, CRM_ETAPES } from '@/lib/utils'
 import type { Prospect, Vente } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Target, TrendingUp, Users, Hotel, Calendar, AlertCircle, Home } from 'lucide-react'
@@ -209,15 +209,21 @@ export function ApporteurDashboard({ prospects, ventes, sejours, visites, lotsDi
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-2">
-            {Object.entries(PROSPECT_STATUT_LABELS).map(([key, label]) => (
-              byStatut[key] ? (
-                <div key={key} className={cn('flex items-center justify-between px-3 py-2 rounded-lg border text-xs', PROSPECT_STATUT_COLORS[key as keyof typeof PROSPECT_STATUT_COLORS])}>
-                  <span className="font-medium">{label}</span>
-                  <span className="font-bold text-sm">{byStatut[key]}</span>
-                </div>
-              ) : null
+            {CRM_ETAPES.map(etape => (
+              <div key={etape.value} className={cn(
+                'flex items-center justify-between px-3 py-2 rounded-lg border text-xs',
+                byStatut[etape.value]
+                  ? PROSPECT_STATUT_COLORS[etape.value as keyof typeof PROSPECT_STATUT_COLORS]
+                  : 'bg-gray-50 text-gray-400 border-gray-100'
+              )}>
+                <span className="font-medium">Étape {etape.step}</span>
+                <span className="font-bold text-sm">{byStatut[etape.value] || 0}</span>
+              </div>
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-2 text-center">
+            {CRM_ETAPES.map(e => `${e.label}: ${byStatut[e.value] || 0}`).join(' · ')}
+          </p>
         </CardContent>
       </Card>
 
