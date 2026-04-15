@@ -13,7 +13,7 @@ import {
 } from '@/lib/utils'
 import type { Prospect, Lot, UserRole } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Search, ChevronRight, User } from 'lucide-react'
+import { Search, ChevronRight, User, PlusCircle } from 'lucide-react'
 
 interface ProspectsClientProps {
   prospects: Prospect[]
@@ -40,6 +40,9 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
     return acc
   }, {} as Record<string, number>)
 
+  // Le manager peut soumettre ses propres prospects
+  const canSubmitProspect = ['manager', 'direction'].includes(role)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -47,6 +50,15 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
           <h1 className="text-2xl font-bold text-[#1A3C6E]">Prospects CRM</h1>
           <p className="text-sm text-gray-500 mt-1">{prospects.length} prospect(s) au total</p>
         </div>
+        {/* BUG FIX #2: Bouton de soumission prospect pour les managers */}
+        {canSubmitProspect && (
+          <Link href="/prospects/nouveau">
+            <Button className="bg-[#1A3C6E] hover:bg-[#15305a]">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Soumettre un prospect
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Pipeline visuel */}
@@ -132,7 +144,19 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
         {filtered.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-gray-400">
-              Aucun prospect trouvé
+              {canSubmitProspect ? (
+                <div className="space-y-3">
+                  <p>Aucun prospect trouvé</p>
+                  <Link href="/prospects/nouveau">
+                    <Button variant="outline" size="sm">
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      Soumettre votre premier prospect
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <p>Aucun prospect trouvé</p>
+              )}
             </CardContent>
           </Card>
         ) : (

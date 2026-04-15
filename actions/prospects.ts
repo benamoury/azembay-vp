@@ -73,6 +73,75 @@ export async function soumettreProspect(data: {
   return { success: true, prospect }
 }
 
+// ─── BUG FIX #1: Modification prospect bloquée côté apporteur post-soumission ─
+// L'apporteur ne peut PAS modifier son prospect une fois soumis.
+// Cette action vérifie l'identité + le statut avant toute mise à jour.
+
+export async function modifierProspectApporteur(prospectId: string, data: {
+  nom?: string
+  prenom?: string
+  email?: string
+  telephone?: string
+  ville?: string
+  pays?: string
+  nationalite?: string
+  profil?: string
+  localisation?: string
+  budget_estime?: number
+  capacite_financiere?: string
+  reference_personnelle?: string
+  valeur_ajoutee?: string
+  lot_cible_id?: string
+  notes?: string
+}) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  // Récupérer le prospect pour vérifier appartenance et statut
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('id, statut, apporteur_id')
+    .eq('id', prospectId)
+    .single()
+
+  if (!prospect) return { success: false, error: 'Prospect non trouvé' }
+
+  // RESTRICTION #1: L'apporteur ne peut modifier que ses propres prospects
+  if (prospect.apporteur_id !== user.id) {
+    return { success: false, error: 'Accès refusé — ce prospect ne vous appartient pas' }
+  }
+
+  // RESTRICTION #2: Modification interdite une fois le prospect soumis (statut != 'brouillon')
+  // Le seul statut modifiable est 'brouillon' (avant soumission)
+  // Une fois en statut 'soumis' ou plus avancé → blocage total
+  const statutsVerrouilles = [
+    'soumis', 'qualifie', 'valide', 'visite_programmee', 'visite_realisee',
+    'dossier_envoye', 'formulaire_signe', 'sejour_confirme', 'sejour_realise',
+    'vendu', 'non_concluant',
+  ]
+
+  if (statutsVerrouilles.includes(prospect.statut)) {
+    return {
+      success: false,
+      error: 'Modification impossible — le prospect a déjà été soumis. Contactez votre manager pour toute correction.',
+    }
+  }
+
+  // Mise à jour autorisée uniquement si statut 'brouillon'
+  const { error } = await admin
+    .from('prospects')
+    .update(data)
+    .eq('id', prospectId)
+    .eq('apporteur_id', user.id) // double sécurité
+
+  if (error) return { success: false, error: error.message }
+
+  return { success: true }
+}
+
 // ─── Étape 2 : Manager qualifie (note obligatoire en base requise) ─────────────
 
 export async function qualifierProspect(prospectId: string) {
@@ -257,6 +326,11 @@ export async function creerVoucher(data: {
 }) {
   const admin = createAdminClient()
 
+  // Validation date format
+  if (!data.date_visite || !/^\d{4}-\d{2}-\d{2}$/.test(data.date_visite)) {
+    return { success: false, error: 'Date de visite invalide — format attendu : YYYY-MM-DD' }
+  }
+
   const { data: voucher, error } = await admin
     .from('vouchers')
     .insert(data)
@@ -368,6 +442,10 @@ export async function creerFormulaire(data: {
   return { success: true, formulaire }
 }
 
+// ─── BUG FIX #3 (legacy path): creerSejour avec validation date ───────────────
+// Cette fonction est appelée depuis prospect-detail-client (vue manager/direction)
+// On s'assure que les dates ne sont jamais des chaînes vides
+
 export async function creerSejour(data: {
   prospect_id: string
   date_arrivee: string
@@ -376,11 +454,36 @@ export async function creerSejour(data: {
   nb_enfants: number
 }) {
   const admin = createAdminClient()
+
+  // Validation: les dates doivent être au format YYYY-MM-DD et non vides
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+  if (!data.date_arrivee || !dateRegex.test(data.date_arrivee)) {
+    return { success: false, error: 'Date d\'arrivée invalide ou manquante (format attendu : YYYY-MM-DD)' }
+  }
+  if (!data.date_depart || !dateRegex.test(data.date_depart)) {
+    return { success: false, error: 'Date de départ invalide ou manquante (format attendu : YYYY-MM-DD)' }
+  }
+  if (data.date_arrivee >= data.date_depart) {
+    return { success: false, error: 'La date de départ doit être après la date d\'arrivée' }
+  }
+
   const { data: sejour, error } = await admin
     .from('sejours')
-    .insert({ ...data, statut: 'demande', gratuit: true })
+    .insert({
+      prospect_id: data.prospect_id,
+      date_arrivee: data.date_arrivee,
+      date_depart: data.date_depart,
+      nb_adultes: data.nb_adultes,
+      nb_enfants_total: data.nb_enfants,
+      statut: 'demande',
+      gratuit: true,
+      recouvre: false,
+      noshow: false,
+      facture_envoyee: false,
+    })
     .select()
     .single()
+
   if (error) return { success: false, error: error.message }
   return { success: true, sejour }
 }

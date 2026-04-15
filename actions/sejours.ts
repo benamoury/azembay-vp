@@ -69,7 +69,8 @@ export async function soumettreSejourDemande(data: {
     return { success: false, error: 'Un séjour est déjà en cours pour ce prospect' }
   }
 
-  // Créer la demande de séjour
+  // BUG FIX #3: date_arrivee et date_depart doivent être null (pas '') lors de la création
+  // Elles seront renseignées par le manager lors de la confirmation
   const { data: sejour, error } = await admin
     .from('sejours')
     .insert({
@@ -80,9 +81,9 @@ export async function soumettreSejourDemande(data: {
       nb_enfants_plus_6: data.nb_enfants_plus_6,
       nb_enfants_moins_6: data.nb_enfants_moins_6,
       preferences_weekends: data.preferences_weekends,
-      date_arrivee: '', // sera rempli à la confirmation
-      date_depart: '',
-      notes_manager: data.notes_apporteur,
+      date_arrivee: null,
+      date_depart: null,
+      notes_manager: data.notes_apporteur ?? null,
       statut: 'demande',
       gratuit: true,
       recouvre: false,
@@ -120,6 +121,127 @@ export async function soumettreSejourDemande(data: {
   return { success: true, sejourId: sejour.id }
 }
 
+// ─── Manager: soumettre un séjour pour son propre prospect ───────────────────
+// Workflow: manager soumet → pair manager valide → direction valide → GH + séjour
+
+export async function soumettreSejourDemandeManager(data: {
+  prospect_id: string
+  nb_adultes: number
+  nb_enfants_plus_6: number
+  nb_enfants_moins_6: number
+  preferences_weekends: { rank: number; weekend_id: string }[]
+  notes_manager?: string
+}) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  // Vérifier le rôle manager
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role, nom, prenom')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || !['manager', 'direction'].includes(profile.role)) {
+    return { success: false, error: 'Accès refusé — rôle manager requis' }
+  }
+
+  // Vérifier que le prospect existe et appartient à ce manager (via manager_id) ou qu'il est soumis par un apporteur de ce manager
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('id, statut, apporteur_id, manager_id, lot_cible_id')
+    .eq('id', data.prospect_id)
+    .single()
+
+  if (!prospect) return { success: false, error: 'Prospect non trouvé' }
+
+  // Statuts valides pour soumettre un séjour
+  const conditionsOk = ['visite_realisee', 'dossier_envoye', 'formulaire_signe', 'sejour_confirme', 'sejour_realise'].includes(prospect.statut)
+  if (!conditionsOk) {
+    return { success: false, error: 'Le prospect doit avoir réalisé sa visite avant de soumettre un séjour' }
+  }
+
+  // Vérifier qu'il n'y a pas déjà un séjour en cours
+  const { data: sejourExistant } = await admin
+    .from('sejours')
+    .select('id')
+    .eq('prospect_id', data.prospect_id)
+    .in('statut', ['demande', 'confirme'])
+    .maybeSingle()
+
+  if (sejourExistant) {
+    return { success: false, error: 'Un séjour est déjà en cours pour ce prospect' }
+  }
+
+  // Créer la demande avec statut spécial 'demande_manager' pour différencier du workflow apporteur
+  const { data: sejour, error } = await admin
+    .from('sejours')
+    .insert({
+      prospect_id: data.prospect_id,
+      apporteur_id: prospect.apporteur_id ?? null,
+      manager_id: user.id,
+      nb_adultes: data.nb_adultes,
+      nb_enfants_total: data.nb_enfants_plus_6 + data.nb_enfants_moins_6,
+      nb_enfants_plus_6: data.nb_enfants_plus_6,
+      nb_enfants_moins_6: data.nb_enfants_moins_6,
+      preferences_weekends: data.preferences_weekends,
+      date_arrivee: null,
+      date_depart: null,
+      notes_manager: data.notes_manager ?? null,
+      statut: 'demande',
+      source: 'manager',
+      gratuit: true,
+      recouvre: false,
+      noshow: false,
+      facture_envoyee: false,
+    })
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  // Notifier les autres managers (pairs) et la direction pour validation
+  const { data: pairs } = await admin
+    .from('profiles')
+    .select('email, nom, prenom, id')
+    .in('role', ['manager', 'direction'])
+    .neq('id', user.id) // exclure le manager soumetteur
+
+  const { data: prospectInfo } = await admin
+    .from('prospects')
+    .select('nom, prenom')
+    .eq('id', data.prospect_id)
+    .single()
+
+  if (pairs && prospectInfo) {
+    const subject = `[Validation requise] Demande de séjour manager — ${prospectInfo.prenom} ${prospectInfo.nom}`
+    const html = `
+      <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1A3C6E;padding:20px;text-align:center;">
+          <h2 style="color:#C8973A;margin:0;">AZEMBAY — Demande de séjour</h2>
+        </div>
+        <div style="padding:24px;background:#F8FAFC;">
+          <p>Le manager <strong>${profile.prenom} ${profile.nom}</strong> a soumis une demande de séjour test pour :</p>
+          <div style="background:white;padding:16px;border-radius:8px;border-left:4px solid #C8973A;margin:16px 0;">
+            <p><strong>Prospect :</strong> ${prospectInfo.prenom} ${prospectInfo.nom}</p>
+            <p><strong>Participants :</strong> ${data.nb_adultes} adulte(s), ${data.nb_enfants_plus_6} enf.&gt;6ans, ${data.nb_enfants_moins_6} enf.≤6ans</p>
+            ${data.notes_manager ? `<p><strong>Notes :</strong> ${data.notes_manager}</p>` : ''}
+          </div>
+          <p>Cette demande nécessite votre validation avant de procéder à l'assignation du weekend.</p>
+        </div>
+      </div>
+    `
+    for (const pair of pairs) {
+      await sendEmail({ to: pair.email, subject, html })
+    }
+  }
+
+  return { success: true, sejourId: sejour.id }
+}
+
 // ─── Manager: confirmer un séjour (assign stock_hebergement + weekend) ────────
 
 export async function confirmerSejour(sejourId: string, data: {
@@ -128,6 +250,17 @@ export async function confirmerSejour(sejourId: string, data: {
   date_depart: string
 }) {
   const admin = createAdminClient()
+
+  // Validation côté serveur des dates
+  if (!data.date_arrivee || !data.date_depart) {
+    return { success: false, error: 'Les dates d\'arrivée et de départ sont obligatoires' }
+  }
+
+  // S'assurer que le format est YYYY-MM-DD
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateRegex.test(data.date_arrivee) || !dateRegex.test(data.date_depart)) {
+    return { success: false, error: 'Format de date invalide — attendu : YYYY-MM-DD' }
+  }
 
   // Récupérer le séjour avec prospect
   const { data: sejour, error: sejourErr } = await admin
@@ -206,7 +339,7 @@ export async function confirmerSejour(sejourId: string, data: {
   // Bloquer l'unité d'hébergement
   await admin.from('stock_hebergement').update({ disponible: false }).eq('id', unite.id)
 
-  // Incrémenter quota_sejours_utilise de l'apporteur
+  // Incrémenter quota_sejours_utilise de l'apporteur (seulement si prospect soumis par apporteur)
   if (prospect?.apporteur_id) {
     const apporteurId = prospect.apporteur_id
     try {
@@ -402,13 +535,13 @@ export async function declarerNoShow(sejourId: string, managerId: string) {
           montant_ttc,
         },
         prospect: { nom: prospect.nom, prenom: prospect.prenom },
-        sejour: { date_arrivee: sejour.date_arrivee, date_depart: sejour.date_depart },
+        sejour: { date_arrivee: sejour.date_arrivee ?? '', date_depart: sejour.date_depart ?? '' },
       })
 
       const emailData = buildEmailNoShow({
         prospect: { nom: prospect.nom, prenom: prospect.prenom },
-        date_arrivee: sejour.date_arrivee,
-        date_depart: sejour.date_depart,
+        date_arrivee: sejour.date_arrivee ?? '',
+        date_depart: sejour.date_depart ?? '',
       })
 
       await sendEmail({
@@ -497,7 +630,7 @@ export async function annulerSejour(sejourId: string) {
     .eq('id', sejourId)
     .single()
 
-  // Vérifier si annulation tardive (<72h)
+  // Vérifier si annulation tardive (<72h) — seulement si date_arrivee est renseignée
   const isLate = sejour?.date_arrivee
     ? (new Date(sejour.date_arrivee).getTime() - Date.now()) < 72 * 60 * 60 * 1000
     : false
@@ -565,6 +698,7 @@ export async function annulerSejour(sejourId: string) {
         .single()
 
       try {
+        const dateArrivee = sejour.date_arrivee ?? ''
         const pdfBuffer = await generateFacturePDF({
           facture: {
             numero_facture: facture?.numero_facture ?? `FAC-${sejourId.slice(0, 8)}`,
@@ -574,12 +708,12 @@ export async function annulerSejour(sejourId: string) {
             montant_ttc,
           },
           prospect: { nom: prospect.nom, prenom: prospect.prenom },
-          sejour: { date_arrivee: sejour.date_arrivee, date_depart: '' },
+          sejour: { date_arrivee: dateArrivee, date_depart: '' },
         })
 
         const emailData = buildEmailAnnulationSejourTardive({
           prospect: { nom: prospect.nom, prenom: prospect.prenom },
-          date_arrivee: sejour.date_arrivee,
+          date_arrivee: dateArrivee,
           date_depart: '',
         })
 
@@ -626,8 +760,10 @@ export async function annulerSejourParToken(token: string) {
 
   if (!sejour) return { success: false, error: 'Aucun séjour actif trouvé' }
 
-  // Vérifier si annulation tardive (<72h)
-  const isLate = (new Date(sejour.date_arrivee).getTime() - Date.now()) < 72 * 60 * 60 * 1000
+  // Vérifier si annulation tardive (<72h) — seulement si la date est renseignée
+  const isLate = sejour.date_arrivee
+    ? (new Date(sejour.date_arrivee).getTime() - Date.now()) < 72 * 60 * 60 * 1000
+    : false
 
   if (isLate) {
     // Retourner flag pour afficher popup confirmation côté client
