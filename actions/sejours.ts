@@ -152,7 +152,7 @@ export async function soumettreSejourDemandeManager(data: {
   // VÃ©rifier que le prospect existe et appartient Ã  ce manager (via manager_id) ou qu'il est soumis par un apporteur de ce manager
   const { data: prospect } = await admin
     .from('prospects')
-    .select('id, statut, apporteur_id, manager_id, lot_cible_id')
+    .select('id, statut, apporteur_id, lot_cible_id')
     .eq('id', data.prospect_id)
     .single()
 
@@ -182,7 +182,6 @@ export async function soumettreSejourDemandeManager(data: {
     .insert({
       prospect_id: data.prospect_id,
       apporteur_id: prospect.apporteur_id ?? null,
-      manager_id: user.id,
       nb_adultes: data.nb_adultes,
       nb_enfants_total: data.nb_enfants_plus_6 + data.nb_enfants_moins_6,
       nb_enfants_plus_6: data.nb_enfants_plus_6,
@@ -798,4 +797,5 @@ export async function confirmerAnnulationTardive(token: string) {
 
   return annulerSejour(sejour.id)
 }
+
 
