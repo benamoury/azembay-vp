@@ -47,18 +47,15 @@ export function NouveauProspectManagerClient({
     e.preventDefault()
     setLoading(true)
 
-    // Le manager soumet le prospect en son propre nom (manager_id = managerId)
-    // Le workflow sera : soumis → qualification par pair manager → validation direction
+    // BUG FIX #1 : manager_id n'existe pas dans la table prospects — on l'enlève
+    // Le manager soumet en tant qu'apporteur_id pour tracer la soumission
     const payload = {
       ...form,
-      // BUG #2: Le manager soumet en tant qu'apporteur_id = managerId
-      // Ce champ est utilisé pour tracer qui a soumis le prospect
       apporteur_id: managerId,
-      manager_id: managerId,
+      // manager_id SUPPRIMÉ — colonne inexistante dans le schéma
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
       lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
-      // Marqueur pour identifier que c'est un prospect soumis par un manager
-      source: 'manager',
+      source: 'direct' as const,
     }
 
     const result = await soumettreProspect(payload as Parameters<typeof soumettreProspect>[0])

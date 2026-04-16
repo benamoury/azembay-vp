@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import {
@@ -11,7 +11,7 @@ import {
 } from '@/lib/email/resend'
 import { generateFacturePDF } from '@/lib/pdf/facture'
 
-// ─── Apporteur: soumettre un séjour (3 weekends préférés) ────────────────────
+// â”€â”€â”€ Apporteur: soumettre un sÃ©jour (3 weekends prÃ©fÃ©rÃ©s) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function soumettreSejourDemande(data: {
   prospect_id: string
@@ -23,11 +23,11 @@ export async function soumettreSejourDemande(data: {
 }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
+  if (!user) return { success: false, error: 'Non authentifiÃ©' }
 
   const admin = createAdminClient()
 
-  // Vérifier que le prospect appartient à l'apporteur
+  // VÃ©rifier que le prospect appartient Ã  l'apporteur
   const { data: prospect } = await admin
     .from('prospects')
     .select('id, statut, apporteur_id, lot_cible_id')
@@ -35,15 +35,15 @@ export async function soumettreSejourDemande(data: {
     .single()
 
   if (!prospect || prospect.apporteur_id !== user.id) {
-    return { success: false, error: 'Prospect non trouvé' }
+    return { success: false, error: 'Prospect non trouvÃ©' }
   }
 
   const conditionsOk = ['visite_realisee', 'dossier_envoye', 'formulaire_signe', 'sejour_confirme', 'sejour_realise'].includes(prospect.statut)
   if (!conditionsOk) {
-    return { success: false, error: 'Le prospect doit avoir réalisé sa visite avant de soumettre un séjour' }
+    return { success: false, error: 'Le prospect doit avoir rÃ©alisÃ© sa visite avant de soumettre un sÃ©jour' }
   }
 
-  // Vérifier quota apporteur via profiles (max 6)
+  // VÃ©rifier quota apporteur via profiles (max 6)
   const { data: apporteurProfile } = await admin
     .from('profiles')
     .select('quota_sejours_utilise, quota_sejours_max')
@@ -54,10 +54,10 @@ export async function soumettreSejourDemande(data: {
   const max = apporteurProfile?.quota_sejours_max ?? 6
 
   if (utilise >= max) {
-    return { success: false, error: `Quota de ${max} séjours atteint pour votre compte` }
+    return { success: false, error: `Quota de ${max} sÃ©jours atteint pour votre compte` }
   }
 
-  // Vérifier qu'il n'y a pas déjà un séjour en cours pour ce prospect
+  // VÃ©rifier qu'il n'y a pas dÃ©jÃ  un sÃ©jour en cours pour ce prospect
   const { data: sejourExistant } = await admin
     .from('sejours')
     .select('id')
@@ -66,11 +66,11 @@ export async function soumettreSejourDemande(data: {
     .maybeSingle()
 
   if (sejourExistant) {
-    return { success: false, error: 'Un séjour est déjà en cours pour ce prospect' }
+    return { success: false, error: 'Un sÃ©jour est dÃ©jÃ  en cours pour ce prospect' }
   }
 
-  // BUG FIX #3: date_arrivee et date_depart doivent être null (pas '') lors de la création
-  // Elles seront renseignées par le manager lors de la confirmation
+  // BUG FIX #3: date_arrivee et date_depart doivent Ãªtre null (pas '') lors de la crÃ©ation
+  // Elles seront renseignÃ©es par le manager lors de la confirmation
   const { data: sejour, error } = await admin
     .from('sejours')
     .insert({
@@ -108,11 +108,11 @@ export async function soumettreSejourDemande(data: {
     .single()
 
   if (managers && prospectInfo) {
-    const subject = `Nouvelle demande de séjour — ${prospectInfo.prenom} ${prospectInfo.nom}`
+    const subject = `Nouvelle demande de sÃ©jour â€” ${prospectInfo.prenom} ${prospectInfo.nom}`
     const weekendsLabel = data.preferences_weekends.map(p => p.weekend_id).join(', ')
-    const html = `<p>Nouvelle demande de séjour soumise pour ${prospectInfo.prenom} ${prospectInfo.nom}.</p>
-      <p>Préférences weekends : ${weekendsLabel}</p>
-      <p>Participants : ${data.nb_adultes} adulte(s), ${data.nb_enfants_plus_6} enf.&gt;6ans, ${data.nb_enfants_moins_6} enf.≤6ans</p>`
+    const html = `<p>Nouvelle demande de sÃ©jour soumise pour ${prospectInfo.prenom} ${prospectInfo.nom}.</p>
+      <p>PrÃ©fÃ©rences weekends : ${weekendsLabel}</p>
+      <p>Participants : ${data.nb_adultes} adulte(s), ${data.nb_enfants_plus_6} enf.&gt;6ans, ${data.nb_enfants_moins_6} enf.â‰¤6ans</p>`
     for (const m of managers) {
       await sendEmail({ to: m.email, subject, html })
     }
@@ -121,8 +121,8 @@ export async function soumettreSejourDemande(data: {
   return { success: true, sejourId: sejour.id }
 }
 
-// ─── Manager: soumettre un séjour pour son propre prospect ───────────────────
-// Workflow: manager soumet → pair manager valide → direction valide → GH + séjour
+// â”€â”€â”€ Manager: soumettre un sÃ©jour pour son propre prospect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Workflow: manager soumet â†’ pair manager valide â†’ direction valide â†’ GH + sÃ©jour
 
 export async function soumettreSejourDemandeManager(data: {
   prospect_id: string
@@ -134,11 +134,11 @@ export async function soumettreSejourDemandeManager(data: {
 }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
+  if (!user) return { success: false, error: 'Non authentifiÃ©' }
 
   const admin = createAdminClient()
 
-  // Vérifier le rôle manager
+  // VÃ©rifier le rÃ´le manager
   const { data: profile } = await admin
     .from('profiles')
     .select('role, nom, prenom')
@@ -146,25 +146,25 @@ export async function soumettreSejourDemandeManager(data: {
     .single()
 
   if (!profile || !['manager', 'direction'].includes(profile.role)) {
-    return { success: false, error: 'Accès refusé — rôle manager requis' }
+    return { success: false, error: 'AccÃ¨s refusÃ© â€” rÃ´le manager requis' }
   }
 
-  // Vérifier que le prospect existe et appartient à ce manager (via manager_id) ou qu'il est soumis par un apporteur de ce manager
+  // VÃ©rifier que le prospect existe et appartient Ã  ce manager (via manager_id) ou qu'il est soumis par un apporteur de ce manager
   const { data: prospect } = await admin
     .from('prospects')
     .select('id, statut, apporteur_id, manager_id, lot_cible_id')
     .eq('id', data.prospect_id)
     .single()
 
-  if (!prospect) return { success: false, error: 'Prospect non trouvé' }
+  if (!prospect) return { success: false, error: 'Prospect non trouvÃ©' }
 
-  // Statuts valides pour soumettre un séjour
+  // Statuts valides pour soumettre un sÃ©jour
   const conditionsOk = ['visite_realisee', 'dossier_envoye', 'formulaire_signe', 'sejour_confirme', 'sejour_realise'].includes(prospect.statut)
   if (!conditionsOk) {
-    return { success: false, error: 'Le prospect doit avoir réalisé sa visite avant de soumettre un séjour' }
+    return { success: false, error: 'Le prospect doit avoir rÃ©alisÃ© sa visite avant de soumettre un sÃ©jour' }
   }
 
-  // Vérifier qu'il n'y a pas déjà un séjour en cours
+  // VÃ©rifier qu'il n'y a pas dÃ©jÃ  un sÃ©jour en cours
   const { data: sejourExistant } = await admin
     .from('sejours')
     .select('id')
@@ -173,10 +173,10 @@ export async function soumettreSejourDemandeManager(data: {
     .maybeSingle()
 
   if (sejourExistant) {
-    return { success: false, error: 'Un séjour est déjà en cours pour ce prospect' }
+    return { success: false, error: 'Un sÃ©jour est dÃ©jÃ  en cours pour ce prospect' }
   }
 
-  // Créer la demande avec statut spécial 'demande_manager' pour différencier du workflow apporteur
+  // CrÃ©er la demande avec statut spÃ©cial 'demande_manager' pour diffÃ©rencier du workflow apporteur
   const { data: sejour, error } = await admin
     .from('sejours')
     .insert({
@@ -217,20 +217,20 @@ export async function soumettreSejourDemandeManager(data: {
     .single()
 
   if (pairs && prospectInfo) {
-    const subject = `[Validation requise] Demande de séjour manager — ${prospectInfo.prenom} ${prospectInfo.nom}`
+    const subject = `[Validation requise] Demande de sÃ©jour manager â€” ${prospectInfo.prenom} ${prospectInfo.nom}`
     const html = `
       <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#1A3C6E;padding:20px;text-align:center;">
-          <h2 style="color:#C8973A;margin:0;">AZEMBAY — Demande de séjour</h2>
+          <h2 style="color:#C8973A;margin:0;">AZEMBAY â€” Demande de sÃ©jour</h2>
         </div>
         <div style="padding:24px;background:#F8FAFC;">
-          <p>Le manager <strong>${profile.prenom} ${profile.nom}</strong> a soumis une demande de séjour test pour :</p>
+          <p>Le manager <strong>${profile.prenom} ${profile.nom}</strong> a soumis une demande de sÃ©jour test pour :</p>
           <div style="background:white;padding:16px;border-radius:8px;border-left:4px solid #C8973A;margin:16px 0;">
             <p><strong>Prospect :</strong> ${prospectInfo.prenom} ${prospectInfo.nom}</p>
-            <p><strong>Participants :</strong> ${data.nb_adultes} adulte(s), ${data.nb_enfants_plus_6} enf.&gt;6ans, ${data.nb_enfants_moins_6} enf.≤6ans</p>
+            <p><strong>Participants :</strong> ${data.nb_adultes} adulte(s), ${data.nb_enfants_plus_6} enf.&gt;6ans, ${data.nb_enfants_moins_6} enf.â‰¤6ans</p>
             ${data.notes_manager ? `<p><strong>Notes :</strong> ${data.notes_manager}</p>` : ''}
           </div>
-          <p>Cette demande nécessite votre validation avant de procéder à l'assignation du weekend.</p>
+          <p>Cette demande nÃ©cessite votre validation avant de procÃ©der Ã  l'assignation du weekend.</p>
         </div>
       </div>
     `
@@ -242,7 +242,7 @@ export async function soumettreSejourDemandeManager(data: {
   return { success: true, sejourId: sejour.id }
 }
 
-// ─── Manager: confirmer un séjour (assign stock_hebergement + weekend) ────────
+// â”€â”€â”€ Manager: confirmer un sÃ©jour (assign stock_hebergement + weekend) â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function confirmerSejour(sejourId: string, data: {
   weekend_id: string
@@ -251,38 +251,38 @@ export async function confirmerSejour(sejourId: string, data: {
 }) {
   const admin = createAdminClient()
 
-  // Validation côté serveur des dates
+  // Validation cÃ´tÃ© serveur des dates
   if (!data.date_arrivee || !data.date_depart) {
-    return { success: false, error: 'Les dates d\'arrivée et de départ sont obligatoires' }
+    return { success: false, error: 'Les dates d\'arrivÃ©e et de dÃ©part sont obligatoires' }
   }
 
   // S'assurer que le format est YYYY-MM-DD
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/
   if (!dateRegex.test(data.date_arrivee) || !dateRegex.test(data.date_depart)) {
-    return { success: false, error: 'Format de date invalide — attendu : YYYY-MM-DD' }
+    return { success: false, error: 'Format de date invalide â€” attendu : YYYY-MM-DD' }
   }
 
-  // Récupérer le séjour avec prospect
+  // RÃ©cupÃ©rer le sÃ©jour avec prospect
   const { data: sejour, error: sejourErr } = await admin
     .from('sejours')
     .select('*, prospect:prospects(nom,prenom,email,apporteur_id,lot_cible_id)')
     .eq('id', sejourId)
     .single()
 
-  if (sejourErr || !sejour) return { success: false, error: 'Séjour non trouvé' }
+  if (sejourErr || !sejour) return { success: false, error: 'SÃ©jour non trouvÃ©' }
 
   const prospect = sejour.prospect as {
     nom: string; prenom: string; email: string; apporteur_id: string; lot_cible_id?: string
   } | null
 
-  // Déterminer le type de lot du prospect (pour choisir le type d'unité d'hébergement)
+  // DÃ©terminer le type de lot du prospect (pour choisir le type d'unitÃ© d'hÃ©bergement)
   let lotType: string | null = null
   if (prospect?.lot_cible_id) {
     const { data: lot } = await admin.from('lots').select('type').eq('id', prospect.lot_cible_id).single()
     lotType = lot?.type ?? null
   }
 
-  // FIFO auto-assignment: stock_hebergement du même type, disponible
+  // FIFO auto-assignment: stock_hebergement du mÃªme type, disponible
   let stockQuery = admin
     .from('stock_hebergement')
     .select('*')
@@ -297,7 +297,7 @@ export async function confirmerSejour(sejourId: string, data: {
   const { data: unite } = await stockQuery.single()
 
   if (!unite) {
-    // Notifier l'apporteur : aucune disponibilité
+    // Notifier l'apporteur : aucune disponibilitÃ©
     if (prospect?.apporteur_id) {
       const { data: apporteurProfile } = await admin.from('profiles').select('email').eq('id', prospect.apporteur_id).single()
       if (apporteurProfile && prospect) {
@@ -308,10 +308,10 @@ export async function confirmerSejour(sejourId: string, data: {
         await sendEmail({ to: apporteurProfile.email, ...emailData })
       }
     }
-    return { success: false, error: 'Aucune unité d\'hébergement disponible pour ce type de lot' }
+    return { success: false, error: 'Aucune unitÃ© d\'hÃ©bergement disponible pour ce type de lot' }
   }
 
-  // Créer le token d'annulation
+  // CrÃ©er le token d'annulation
   const { data: tokenRow } = await admin
     .from('annulation_tokens')
     .insert({
@@ -321,7 +321,7 @@ export async function confirmerSejour(sejourId: string, data: {
     .select('id, token')
     .single()
 
-  // Mettre à jour le séjour
+  // Mettre Ã  jour le sÃ©jour
   const { error } = await admin
     .from('sejours')
     .update({
@@ -336,10 +336,10 @@ export async function confirmerSejour(sejourId: string, data: {
 
   if (error) return { success: false, error: error.message }
 
-  // Bloquer l'unité d'hébergement
+  // Bloquer l'unitÃ© d'hÃ©bergement
   await admin.from('stock_hebergement').update({ disponible: false }).eq('id', unite.id)
 
-  // Incrémenter quota_sejours_utilise de l'apporteur (seulement si prospect soumis par apporteur)
+  // IncrÃ©menter quota_sejours_utilise de l'apporteur (seulement si prospect soumis par apporteur)
   if (prospect?.apporteur_id) {
     const apporteurId = prospect.apporteur_id
     try {
@@ -358,10 +358,10 @@ export async function confirmerSejour(sejourId: string, data: {
     }
   }
 
-  // Mettre à jour statut du prospect
+  // Mettre Ã  jour statut du prospect
   await admin.from('prospects').update({ statut: 'sejour_confirme' }).eq('id', sejour.prospect_id)
 
-  // Incrémenter nb_sejours_confirmes du weekend
+  // IncrÃ©menter nb_sejours_confirmes du weekend
   const { data: wknd } = await admin
     .from('weekends_actives')
     .select('nb_sejours_confirmes, seuil_guests, date_vendredi, date_dimanche')
@@ -376,7 +376,7 @@ export async function confirmerSejour(sejourId: string, data: {
       .update({ nb_sejours_confirmes: newCount, statut: newStatut })
       .eq('id', data.weekend_id)
 
-    // E-INT1: 3 séjours confirmés → notifier managers + direction + sécurité
+    // E-INT1: 3 sÃ©jours confirmÃ©s â†’ notifier managers + direction + sÃ©curitÃ©
     if (newStatut === 'complet') {
       const { data: sejoursWeekend } = await admin
         .from('sejours')
@@ -414,7 +414,7 @@ export async function confirmerSejour(sejourId: string, data: {
     }
   }
 
-  // E7 — Email de confirmation séjour → client + apporteur
+  // E7 â€” Email de confirmation sÃ©jour â†’ client + apporteur
   const lien_annulation = tokenRow?.token
     ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://azembay.vercel.app'}/annuler/${tokenRow.token}`
     : ''
@@ -443,7 +443,7 @@ export async function confirmerSejour(sejourId: string, data: {
       }
     }
 
-    // Copie sécurité
+    // Copie sÃ©curitÃ©
     const { data: securite } = await admin.from('profiles').select('email').eq('role', 'securite')
     for (const s of securite ?? []) {
       await sendEmail({ to: s.email, ...emailData })
@@ -453,12 +453,12 @@ export async function confirmerSejour(sejourId: string, data: {
   return { success: true }
 }
 
-// ─── Direction: valider le weekend ────────────────────────────────────────────
+// â”€â”€â”€ Direction: valider le weekend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function validerWeekend(weekendId: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
+  if (!user) return { success: false, error: 'Non authentifiÃ©' }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -474,7 +474,7 @@ export async function validerWeekend(weekendId: string) {
   return { success: true }
 }
 
-// ─── Manager: déclarer un no-show + générer facture ──────────────────────────
+// â”€â”€â”€ Manager: dÃ©clarer un no-show + gÃ©nÃ©rer facture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function declarerNoShow(sejourId: string, managerId: string) {
   const admin = createAdminClient()
@@ -485,7 +485,7 @@ export async function declarerNoShow(sejourId: string, managerId: string) {
     .eq('id', sejourId)
     .single()
 
-  if (error || !sejour) return { success: false, error: 'Séjour non trouvé' }
+  if (error || !sejour) return { success: false, error: 'SÃ©jour non trouvÃ©' }
 
   const MONTANT_NOSHOW_HT = sejour.montant_facturable ?? 5000
   const TVA = 0.20
@@ -518,7 +518,7 @@ export async function declarerNoShow(sejourId: string, managerId: string) {
     })
     .eq('id', sejourId)
 
-  // Libérer l'unité d'hébergement
+  // LibÃ©rer l'unitÃ© d'hÃ©bergement
   if (sejour.stock_hebergement_id) {
     await admin.from('stock_hebergement').update({ disponible: true }).eq('id', sejour.stock_hebergement_id)
   }
@@ -562,7 +562,7 @@ export async function declarerNoShow(sejourId: string, managerId: string) {
   return { success: true, factureId: facture.id }
 }
 
-// ─── Manager: confirmer recouvrement ─────────────────────────────────────────
+// â”€â”€â”€ Manager: confirmer recouvrement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function confirmerRecouvrement(sejourId: string, managerId: string) {
   const admin = createAdminClient()
@@ -583,7 +583,7 @@ export async function confirmerRecouvrement(sejourId: string, managerId: string)
   return { success: true }
 }
 
-// ─── Manager: marquer séjour réalisé ─────────────────────────────────────────
+// â”€â”€â”€ Manager: marquer sÃ©jour rÃ©alisÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function marquerSejourRealise(sejourId: string) {
   const admin = createAdminClient()
@@ -597,7 +597,7 @@ export async function marquerSejourRealise(sejourId: string) {
 
   if (error) return { success: false, error: error.message }
 
-  // Libérer l'unité d'hébergement
+  // LibÃ©rer l'unitÃ© d'hÃ©bergement
   if (sejour.stock_hebergement_id) {
     await admin.from('stock_hebergement').update({ disponible: true }).eq('id', sejour.stock_hebergement_id)
   }
@@ -607,7 +607,7 @@ export async function marquerSejourRealise(sejourId: string) {
   return { success: true }
 }
 
-// ─── Toggle weekend actif ─────────────────────────────────────────────────────
+// â”€â”€â”€ Toggle weekend actif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function toggleWeekend(weekendId: string, actif: boolean) {
   const admin = createAdminClient()
@@ -619,7 +619,7 @@ export async function toggleWeekend(weekendId: string, actif: boolean) {
   return { success: true }
 }
 
-// ─── Annuler séjour (interne) ─────────────────────────────────────────────────
+// â”€â”€â”€ Annuler sÃ©jour (interne) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function annulerSejour(sejourId: string) {
   const admin = createAdminClient()
@@ -630,7 +630,7 @@ export async function annulerSejour(sejourId: string) {
     .eq('id', sejourId)
     .single()
 
-  // Vérifier si annulation tardive (<72h) — seulement si date_arrivee est renseignée
+  // VÃ©rifier si annulation tardive (<72h) â€” seulement si date_arrivee est renseignÃ©e
   const isLate = sejour?.date_arrivee
     ? (new Date(sejour.date_arrivee).getTime() - Date.now()) < 72 * 60 * 60 * 1000
     : false
@@ -642,7 +642,7 @@ export async function annulerSejour(sejourId: string) {
 
   if (error) return { success: false, error: error.message }
 
-  // Libérer l'unité d'hébergement
+  // LibÃ©rer l'unitÃ© d'hÃ©bergement
   if (sejour?.stock_hebergement_id) {
     await admin.from('stock_hebergement').update({ disponible: true }).eq('id', sejour.stock_hebergement_id)
   }
@@ -655,7 +655,7 @@ export async function annulerSejour(sejourId: string) {
       .eq('id', sejour.annulation_token_id)
   }
 
-  // Décrémenter nb_sejours_confirmes du weekend
+  // DÃ©crÃ©menter nb_sejours_confirmes du weekend
   if (sejour?.weekend_id) {
     const { data: wknd } = await admin
       .from('weekends_actives')
@@ -671,7 +671,7 @@ export async function annulerSejour(sejourId: string) {
     }
   }
 
-  // Si annulation tardive → email E9 + facture
+  // Si annulation tardive â†’ email E9 + facture
   if (isLate && sejour?.prospect_id) {
     const { data: prospect } = await admin
       .from('prospects')
@@ -733,12 +733,12 @@ export async function annulerSejour(sejourId: string) {
   return { success: true }
 }
 
-// ─── Annulation séjour publique (via token UUID) ──────────────────────────────
+// â”€â”€â”€ Annulation sÃ©jour publique (via token UUID) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function annulerSejourParToken(token: string) {
   const admin = createAdminClient()
 
-  // Vérifier le token
+  // VÃ©rifier le token
   const { data: tokenRow } = await admin
     .from('annulation_tokens')
     .select('*')
@@ -746,11 +746,11 @@ export async function annulerSejourParToken(token: string) {
     .eq('type', 'sejour')
     .single()
 
-  if (!tokenRow) return { success: false, error: 'Lien invalide ou expiré' }
-  if (tokenRow.used_at) return { success: false, error: 'Ce lien a déjà été utilisé' }
-  if (new Date(tokenRow.expires_at) < new Date()) return { success: false, error: 'Lien expiré' }
+  if (!tokenRow) return { success: false, error: 'Lien invalide ou expirÃ©' }
+  if (tokenRow.used_at) return { success: false, error: 'Ce lien a dÃ©jÃ  Ã©tÃ© utilisÃ©' }
+  if (new Date(tokenRow.expires_at) < new Date()) return { success: false, error: 'Lien expirÃ©' }
 
-  // Trouver le séjour
+  // Trouver le sÃ©jour
   const { data: sejour } = await admin
     .from('sejours')
     .select('id, prospect_id, date_arrivee, date_depart, stock_hebergement_id, weekend_id')
@@ -758,22 +758,22 @@ export async function annulerSejourParToken(token: string) {
     .in('statut', ['demande', 'confirme'])
     .single()
 
-  if (!sejour) return { success: false, error: 'Aucun séjour actif trouvé' }
+  if (!sejour) return { success: false, error: 'Aucun sÃ©jour actif trouvÃ©' }
 
-  // Vérifier si annulation tardive (<72h) — seulement si la date est renseignée
+  // VÃ©rifier si annulation tardive (<72h) â€” seulement si la date est renseignÃ©e
   const isLate = sejour.date_arrivee
     ? (new Date(sejour.date_arrivee).getTime() - Date.now()) < 72 * 60 * 60 * 1000
     : false
 
   if (isLate) {
-    // Retourner flag pour afficher popup confirmation côté client
-    return { success: false, tardive: true, error: 'Annulation <72h — facturation applicable' }
+    // Retourner flag pour afficher popup confirmation cÃ´tÃ© client
+    return { success: false, tardive: true, error: 'Annulation <72h â€” facturation applicable' }
   }
 
   return annulerSejour(sejour.id)
 }
 
-// ─── Confirmer annulation tardive (après popup) ───────────────────────────────
+// â”€â”€â”€ Confirmer annulation tardive (aprÃ¨s popup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function confirmerAnnulationTardive(token: string) {
   const admin = createAdminClient()
@@ -794,7 +794,8 @@ export async function confirmerAnnulationTardive(token: string) {
     .in('statut', ['demande', 'confirme'])
     .single()
 
-  if (!sejour) return { success: false, error: 'Aucun séjour actif trouvé' }
+  if (!sejour) return { success: false, error: 'Aucun sÃ©jour actif trouvÃ©' }
 
   return annulerSejour(sejour.id)
 }
+
