@@ -55,7 +55,7 @@ export function NouveauProspectManagerClient({
       // manager_id SUPPRIMÉ — colonne inexistante dans le schéma
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined,
       lot_cible_id: (form.lot_cible_id && form.lot_cible_id !== 'none') ? form.lot_cible_id : undefined,
-      source: 'direct' as const,
+      // source omis - valeur par defaut 'apporteur' utilisee en base
     }
 
     const result = await soumettreProspect(payload as Parameters<typeof soumettreProspect>[0])
@@ -237,4 +237,5 @@ export function NouveauProspectManagerClient({
     </div>
   )
 }
+
 

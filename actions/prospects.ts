@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import {
@@ -34,7 +34,7 @@ export async function soumettreProspect(data: {
 
   const { data: prospect, error } = await supabase
     .from('prospects')
-    .insert({ ...data, statut: 'soumis' })
+    .insert({ statut: 'soumis', apporteur_id: data.apporteur_id, nom: data.nom, prenom: data.prenom, email: data.email, ...(data.telephone && { telephone: data.telephone }), ...(data.ville && { ville: data.ville }), ...(data.pays && { pays: data.pays }), ...(data.nationalite && { nationalite: data.nationalite }), ...(data.profil && { profil: data.profil }), ...(data.localisation && { localisation: data.localisation }), ...(data.budget_estime && { budget_estime: data.budget_estime }), ...(data.capacite_financiere && { capacite_financiere: data.capacite_financiere }), ...(data.reference_personnelle && { reference_personnelle: data.reference_personnelle }), ...(data.valeur_ajoutee && { valeur_ajoutee: data.valeur_ajoutee }), ...(data.lot_cible_id && { lot_cible_id: data.lot_cible_id }), ...(data.notes && { notes: data.notes }), ...(data.source && { source: data.source }), ...(data.source_remuneree_id && { source_remuneree_id: data.source_remuneree_id }) })
     .select()
     .single()
 
