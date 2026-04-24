@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,8 +11,9 @@ import {
 } from '@/lib/utils'
 import type { Prospect, Vente } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { TrendingUp, Target, User, Phone, ChevronRight } from 'lucide-react'
+import { TrendingUp, Target, User, Phone, ChevronRight, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { supprimerProspect } from '@/actions/prospects'
 
 interface MesProspectsClientProps {
   prospects: Prospect[]
@@ -22,6 +24,17 @@ const OBJECTIF = 3
 const COMMISSION_RATE = 0.02
 
 export function MesProspectsClient({ prospects, ventes }: MesProspectsClientProps) {
+  const router = useRouter()
+
+  async function handleSupprimerProspect(prospectId: string, nom: string) {
+    if (!confirm(`Supprimer définitivement ${nom} ? Cette action est irréversible.`)) return
+    const res = await supprimerProspect(prospectId)
+    if (res.success) {
+      router.refresh()
+    } else {
+      alert(res.error)
+    }
+  }
   const [onglet, setOnglet] = useState<'actifs' | 'liste_attente' | 'closes'>('actifs')
 
   const ventesAcquises = ventes.filter(v => v.statut === 'acte_signe')

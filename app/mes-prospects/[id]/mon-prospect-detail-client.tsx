@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,7 +18,7 @@ import Link from 'next/link'
 import { demanderVisite } from '@/actions/visites'
 import { ajouterNote } from '@/actions/notes'
 import { soumettreSejourDemande } from '@/actions/sejours'
-import { mettreEnListeAttente, closerProspect, reactiverProspect, modifierProspect, renvoyerVoucher } from '@/actions/prospects'
+import { mettreEnListeAttente, closerProspect, reactiverProspect, modifierProspect, renvoyerVoucher, supprimerProspect } from '@/actions/prospects'
 import { ajouterLotProspect, retirerLotProspect } from '@/actions/prospects'
 
 type VisiteWithJour = {
@@ -154,6 +155,18 @@ export function MonProspectDetailClient({
   const [noteText, setNoteText] = useState('')
   const [loading, setLoading] = useState(false)
   const [renvoyantVoucherId, setRenvoyantVoucherId] = useState<string | null>(null)
+
+  const router = useRouter()
+
+  async function handleSupprimerProspect() {
+    if (!confirm(`Supprimer définitivement ${prospect.prenom} ${prospect.nom} ? Cette action est irréversible.`)) return
+    const res = await supprimerProspect(prospect.id)
+    if (res.success) {
+      router.push('/mes-prospects')
+    } else {
+      toast({ title: 'Erreur', description: res.error, variant: 'destructive' })
+    }
+  }
 
   async function handleRenvoyerVoucher(voucherId: string) {
     setRenvoyantVoucherId(voucherId)

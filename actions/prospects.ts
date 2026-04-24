@@ -177,7 +177,7 @@ export async function qualifierProspect(prospectId: string) {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const notesText = notes?.map(n => n.contenu).join('\n---\n') ?? ''
+  const notesText = notes?.map((n: { contenu: string }) => n.contenu).join('\n---\n') ?? ''
 
   // Mettre à jour le statut
   const { error } = await admin
@@ -894,6 +894,40 @@ export async function renvoyerVoucher(voucherId: string) {
   if (apporteur.email && apporteur.email !== prospect.email) sendsR.push(sendEmail({ to: apporteur.email, cc: TECH_EMAIL_R, ...emailData }))
   if (manager.email && manager.email !== apporteur.email && manager.email !== prospect.email) sendsR.push(sendEmail({ to: manager.email, cc: TECH_EMAIL_R, ...emailData }))
   await Promise.all(sendsR)
+
+  return { success: true }
+}
+
+// ─── Supprimer prospect (apporteur originateur uniquement) ───────────────────
+
+export async function supprimerProspect(prospectId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Non authentifié' }
+
+  const admin = createAdminClient()
+
+  // Vérifier que l'utilisateur est bien l'apporteur originateur
+  const { data: prospect } = await admin
+    .from('prospects')
+    .select('id, apporteur_id, nom, prenom, statut')
+    .eq('id', prospectId)
+    .single()
+
+  if (!prospect) return { success: false, error: 'Prospect introuvable' }
+  if (prospect.apporteur_id !== user.id) {
+    return { success: false, error: 'Vous ne pouvez supprimer que vos propres prospects' }
+  }
+
+  // Supprimer les données liées d'abord
+  await admin.from('client_notes').delete().eq('prospect_id', prospectId)
+  await admin.from('visites').delete().eq('prospect_id', prospectId)
+  await admin.from('vouchers').delete().eq('prospect_id', prospectId)
+  await admin.from('prospect_lots').delete().eq('prospect_id', prospectId)
+
+  // Supprimer le prospect
+  const { error } = await admin.from('prospects').delete().eq('id', prospectId)
+  if (error) return { success: false, error: error.message }
 
   return { success: true }
 }

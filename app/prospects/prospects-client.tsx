@@ -27,10 +27,14 @@ export function ProspectsClient({ prospects, role }: ProspectsClientProps) {
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState('tous')
 
+  const STATUTS_EXCLUS_PAR_DEFAUT = ['non_concluant', 'liste_attente']
+
   const filtered = prospects.filter(p => {
     const matchSearch = search === '' ||
       `${p.prenom} ${p.nom} ${p.email}`.toLowerCase().includes(search.toLowerCase())
-    const matchStatut = filterStatut === 'tous' || p.statut === filterStatut
+    const matchStatut = filterStatut === 'tous'
+      ? !STATUTS_EXCLUS_PAR_DEFAUT.includes(p.statut)
+      : p.statut === filterStatut
     return matchSearch && matchStatut
   })
 
